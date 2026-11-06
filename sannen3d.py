@@ -59,7 +59,7 @@ def split_all(xy, zg, zd):
     return out
 
 
-def clean_tris(tris, tol=0.005, hmin=0.001):
+def clean_tris(tris, tol=0.01, hmin=0.02):
     """Làm sạch lưới tam giác trước khi dựng khối solid: gộp đỉnh cách nhau dưới tol (mặt bằng),
     bỏ tam giác suy biến, lật cạnh của tam giác quá mảnh. tris: [(x, y, a, b)] * 3."""
     from scipy.spatial import cKDTree
@@ -90,7 +90,7 @@ def clean_tris(tris, tol=0.005, hmin=0.001):
             continue
         faces.add(f if a > 0 else (f[0], f[2], f[1]))
     faces = set(faces)
-    for _ in range(5):
+    for _ in range(20):
         emap = {}
         for f in faces:
             for i in range(3):
