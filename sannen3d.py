@@ -407,6 +407,7 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
         ov = z["ov"]
         zg = ov.z - cfg["strip"]
         zd = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3)
+        zd = np.where(np.abs(zd - zg) < 0.002, zg, zd)   # chênh dưới 2 mm coi như bằng, tránh mặt quá mảnh khi đổi solid
         allp = split_all(ov.xy, zg, zd)
         p, q = body_mesh([[(a[0], a[1], min(a[2], a[3]), zbase) for a in t] for t in allp], pinch=True)
         bodies.append(("SN3D_NEN", z["name"] + " nền", sub(p), q, None))
@@ -531,6 +532,9 @@ def acad_script(dxf, dwg, mpr, M, origin):
             L.append(f'(command "_.CYLINDER" \'({x:.4f} {y:.4f} {top - Lc:.4f}) {d / 2:.4f} {Lc:.4f})')
         L.append('(setvar "CLAYER" "0")')
     m = mpr.as_posix()
+    for mode in (3, 0):   # lần 2, 3 cho các khối chưa đổi được
+        L.append(f'(setvar "SMOOTHMESHCONVERT" {mode})')
+        L.append(f'(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "{lays}")))) (command "_.CONVTOSOLID" ss ""))')
     L.append(f'(setq ss (ssget "_X" \'((0 . "3DSOLID") (8 . "{",".join(CHECK_LAYERS)}"))) i 0)')
     L.append(f'(if ss (repeat (sslength ss) (setq e (ssname ss i) i (1+ i)) '
              f'(command "_.MASSPROP" e "" "_Y" (strcat "{m}/" (cdr (assoc 8 (entget e))) "_" (cdr (assoc 5 (entget e))) ".mpr"))))')
