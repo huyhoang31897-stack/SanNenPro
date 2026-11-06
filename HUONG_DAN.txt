@@ -1,0 +1,43 @@
+SANNENPRO 2.0 - CONG CU TINH KHOI LUONG SAN NEN
+
+CAI DAT
+- Giai nen, giu nguyen thu muc SanNenPro. Khong can cai Python.
+- Doc file DWG can may co AutoCAD. Khong co AutoCAD thi luu ban ve sang DXF.
+
+CHUAN BI BAN VE
+- Cao do tu nhien: TEXT so, MTEXT so, POINT co Z, hoac block co thuoc tinh cao do.
+- Ranh gioi: polyline kin, moi khu 1 polyline.
+- Cao do thiet ke: nhap tay, hoac TEXT so tren layer rieng.
+- Duong gay (neu co): line/polyline tren layer co chu "break" hoac "duong gay".
+  Line co Z thi lay Z do; line Z = 0 thi lay cao do tu mat dat.
+- Ten layer tuy y: chuong trinh tu nhan. Neu nhan sai, bam "Doc danh sach layer" va chon lai.
+
+SU DUNG
+1. Mo SanNenPro.exe, bam Them de chon DWG/DXF.
+2. Nhap cao do thiet ke, buoc luoi, he so K.
+3. Can taluy thi nhap m cua mai dao, mai dap (vi du 1 va 1.5). De trong la khong tinh.
+4. Bam CHAY. Xong bam Mo ket qua.
+
+DUNG TRONG AUTOCAD
+1. Mo SanNenPro.exe 1 lan.
+2. Trong AutoCAD: APPLOAD, chon sannen.lsp (cho vao Startup Suite de tu nap).
+3. Go SANNEN de mo chuong trinh voi ban ve hien hanh.
+4. Tinh xong go SANNENKQ de chen ket qua dung toa do vao ban ve.
+
+KET QUA
+- SanNen_KhoiLuong.xlsx: tong hop, bang tung khu, can doi dat, can bang, taluy, kiem tra.
+- SanNen_MatBang.dwg/.dxf: ranh gioi, luoi, cao do nut, hatch dao dap, duong 0, chan taluy, bang tong hop.
+- SanNen_BaoCao.pdf: ban do dao dap, tong hop, duong cong can bang, canh bao.
+File goc khong bi sua.
+
+CACH TINH
+- Luoi o: V = S x trung binh |h| cac dinh, tach theo duong h = 0.
+- TIN: tich phan chinh xac tren mo hinh tam giac, co ep theo duong gay.
+- Taluy: mai tu ranh gioi ra ngoai den khi gap mat dat, goc bo tron, tinh tren luoi 0.5 m, rong toi da 30 m.
+- Nhieu khu chong len nhau: phan chong tinh cho khu nam truoc; khe ho nhap vao khu ke.
+
+GIOI HAN
+- Taluy ap dung cho toan bo chu vi ngoai, chua chon duoc tung canh.
+- Chua tinh boc phong hoa, co ket, ham, ho mong.
+- Can bang dao dap la cao do phang trong ranh, chua gom taluy.
+- Xem sheet Kiem tra truoc khi dung so lieu.
