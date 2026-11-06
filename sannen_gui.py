@@ -113,8 +113,10 @@ def gui(files, auto=False):
         C[k].grid(row=i, column=1, sticky="ew", padx=(6, 0))
     fix = tk.BooleanVar(value=True)
     hml = tk.BooleanVar(value=False)
+    x3d = tk.BooleanVar(value=True)
     ttk.Checkbutton(fl, text="Tự sửa chồng lấn, khe hở ranh giới", variable=fix).grid(row=7, column=0, columnspan=2, sticky="w")
     ttk.Checkbutton(fl, text="Đối chiếu lưới và nhãn HML trong bản vẽ", variable=hml).grid(row=8, column=0, columnspan=2, sticky="w")
+    ttk.Checkbutton(fl, text="Xuất 3D: HTML, IFC cho Navisworks, LandXML cho Civil 3D", variable=x3d).grid(row=10, column=0, columnspan=2, sticky="w")
     read_btn = ttk.Button(fl, text="Đọc danh sách layer")
     read_btn.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 
@@ -164,6 +166,7 @@ def gui(files, auto=False):
         cfg["project"] = V["project"].get().strip()
         cfg["fix_bdy"] = fix.get()
         cfg["use_grid"] = hml.get()
+        cfg["export_3d"] = x3d.get()
         for k, c in C.items():
             if c.get() != AUTO:
                 cfg[k] = c.get()

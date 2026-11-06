@@ -1,9 +1,9 @@
 {
-  "version": "2.2",
+  "version": "2.3",
   "inputs": [
-    "C:\\SanNenDemo\\Khu dat mau day du.dxf"
+    "Khu_dat_mau_day_du.dxf"
   ],
-  "output_dir": "C:\\SanNenDemo\\KetQuaDayDu",
+  "output_dir": ".",
   "layers": [
     {
       "pts": "CAO DO HIEN TRANG",
@@ -100,10 +100,12 @@
   "errors": [],
   "fixed": [],
   "files": [
-    "C:\\SanNenDemo\\KetQuaDayDu\\SanNen_BaoCao.pdf",
-    "C:\\SanNenDemo\\KetQuaDayDu\\SanNen_KetQua.json",
-    "C:\\SanNenDemo\\KetQuaDayDu\\SanNen_KhoiLuong.xlsx",
-    "C:\\SanNenDemo\\KetQuaDayDu\\SanNen_MatBang.dwg",
-    "C:\\SanNenDemo\\KetQuaDayDu\\SanNen_MatBang.dxf"
+    "SanNen_3D.html",
+    "SanNen_3D.ifc",
+    "SanNen_BaoCao.pdf",
+    "SanNen_KetQua.json",
+    "SanNen_KhoiLuong.xlsx",
+    "SanNen_MatBang.dxf",
+    "SanNen_TIN.xml"
   ]
 }

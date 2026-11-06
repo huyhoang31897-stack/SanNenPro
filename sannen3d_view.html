@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>{{TITLE}}: mô hình san nền 3D</title>
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;background:#212830;color:#fff;font:15px/1.4 Arial,"Liberation Sans",sans-serif}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#panel{position:fixed;left:12px;top:12px;width:300px;max-height:calc(100% - 24px);overflow:auto;background:#212830ee;border:2px solid #fff}
+#panel h1{font-size:20px;margin:0;padding:8px 12px;border-bottom:1px solid #fff}
+.row{padding:8px 12px;border-bottom:1px solid #fff}.row:last-child{border-bottom:0}
+.lbl{display:flex;justify-content:space-between;gap:8px}
+input[type=range]{width:100%;margin:6px 0 2px;accent-color:#ffe600}
+table{width:100%;border-collapse:collapse}td{padding:2px 0}td:last-child{text-align:right;font-weight:700}
+.t{display:block;padding:1px 0}.t input{margin-right:6px}
+button{font:700 14px Arial,"Liberation Sans",sans-serif;background:#ffe600;color:#16191d;border:0;padding:7px 10px;cursor:pointer;margin:2px 4px 2px 0}
+button.off{background:#fff}#hide{position:absolute;right:6px;top:6px;margin:0;padding:3px 8px}
+#info{position:fixed;right:12px;top:12px;width:230px;background:#212830ee;border:2px solid #fff;padding:8px 12px;display:none}
+#sec{position:fixed;left:324px;right:12px;bottom:12px;height:230px;background:#fff;border:2px solid #16191d;display:none}
+#sec canvas{width:100%;height:100%;display:block}#secx{position:absolute;right:4px;top:4px;margin:0}
+#hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#ffe600;color:#16191d;padding:6px 12px;font-weight:700;display:none}
+#open{position:fixed;left:12px;top:12px;display:none;margin:0}
+.leg{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1px}
+@media (max-width:760px){#panel{width:calc(100% - 24px);max-height:48%}#sec{left:12px;height:190px}#info{top:auto;bottom:12px;right:12px}}
+</style></head><body>
+<canvas id="gl"></canvas>
+<button id="open">Bảng điều khiển</button>
+<div id="panel"><h1 id="ttl"></h1><button id="hide" class="off">Ẩn</button>
+<div class="row"><div class="lbl"><span id="lvlname">Cao độ san</span><b id="lvl"></b></div>
+<input id="off" type="range" min="-3" max="3" step="0.01" value="0">
+<button id="reset" class="off">Về thiết kế</button><button id="bal">Cân bằng</button></div>
+<div class="row"><table>
+<tr><td><span class="leg" style="background:#1f7a3d"></span>Đắp trong ranh</td><td id="vf"></td></tr>
+<tr><td><span class="leg" style="background:#b32d3a"></span>Đào trong ranh</td><td id="vc"></td></tr>
+<tr><td id="exl">Taluy, hố móng, cọc</td><td id="ex"></td></tr>
+<tr><td>Thừa (+) / thiếu (-)</td><td id="sur"></td></tr>
+<tr><td>Hệ số K</td><td><input id="k" type="number" step="0.01" style="width:64px"></td></tr></table></div>
+<div class="row"><label class="t"><input type="checkbox" id="lg" checked>Mặt đất hiện trạng</label>
+<label class="t"><input type="checkbox" id="ld" checked>Mặt thiết kế, màu đào đắp</label>
+<label class="t"><input type="checkbox" id="lc">Lưới ô</label>
+<label class="t" id="lt0"><input type="checkbox" id="lt" checked>Mái taluy</label>
+<label class="t" id="lp0"><input type="checkbox" id="lp" checked>Hố móng, cọc</label></div>
+<div class="row"><div class="lbl"><span>Phóng đại cao độ</span><b id="exv"></b></div><input id="ez" type="range" min="1" max="20" step="1" value="5"></div>
+<div class="row"><button id="secb">Mặt cắt</button><button id="view" class="off">Nhìn lại</button>
+<div style="font-size:13px;margin-top:4px">Kéo để xoay, cuộn để zoom, chuột phải để dời. Bấm vào ô để xem khối lượng.</div></div></div>
+<div id="info"></div><div id="sec"><canvas id="sc"></canvas><button id="secx" class="off">Đóng</button></div><div id="hint"></div>
+<script>
+const D=/*DATA*/null;
+window.SN={D};
+const $=id=>document.getElementById(id);
+const cv=$("gl"),gl=cv.getContext("webgl2",{antialias:true});
+$("ttl").textContent=D.name;$("k").value=D.K;
+if(!gl){$("hint").style.display="block";$("hint").textContent="Trình duyệt không hỗ trợ WebGL2"}
+const VS=`#version 300 es
+in vec3 p;in vec3 c;uniform mat4 M;uniform float E,Z0;out vec3 vc;out vec3 vp;
+void main(){vec3 q=vec3(p.x,p.y,(p.z-Z0)*E);vp=q;vc=c;gl_Position=M*vec4(q,1.);}`;
+const FS=`#version 300 es
+precision highp float;in vec3 vc;in vec3 vp;uniform float L;uniform float A;out vec4 o;
+void main(){vec3 n=normalize(cross(dFdx(vp),dFdy(vp)));float d=abs(dot(n,normalize(vec3(.35,.45,.82))));
+o=vec4(vc*(L>.5?.42+.58*d:1.),A);}`;
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(x);return x}
+const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pr);gl.useProgram(pr);
+const U=n=>gl.getUniformLocation(pr,n),uM=U("M"),uE=U("E"),uZ=U("Z0"),uL=U("L"),uA=U("A"),aP=gl.getAttribLocation(pr,"p"),aC=gl.getAttribLocation(pr,"c");
+function mesh(pos,col,mode,dyn){const a=gl.createVertexArray();gl.bindVertexArray(a);const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,pos,dyn?gl.DYNAMIC_DRAW:gl.STATIC_DRAW);gl.enableVertexAttribArray(aP);gl.vertexAttribPointer(aP,3,gl.FLOAT,false,0,0);
+const c=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,c);gl.bufferData(gl.ARRAY_BUFFER,col,dyn?gl.DYNAMIC_DRAW:gl.STATIC_DRAW);gl.enableVertexAttribArray(aC);gl.vertexAttribPointer(aC,3,gl.FLOAT,false,0,0);return{a,b,c,n:pos.length/3,mode}}
+function expand(v,t,rgb){const p=new Float32Array(t.length*3),c=new Float32Array(t.length*3);for(let i=0;i<t.length;i++){const k=t[i]*3;p.set([v[k],v[k+1],v[k+2]],i*3);c.set(rgb,i*3)}return[p,c]}
+const site=D.site,N=site.own.length;
+let zmin=1e9,zmax=-1e9;for(const z of site.zg){if(z<zmin)zmin=z;if(z>zmax)zmax=z}for(const z of site.zd){if(z<zmin)zmin=z;if(z>zmax)zmax=z}
+const Z0=(zmin+zmax)/2;
+const gnd=mesh(...expand(D.ground.v,D.ground.t,[.60,.56,.47]),gl.TRIANGLES);
+const P=new Float32Array(N*9),C=new Float32Array(N*9);
+for(let i=0;i<N*3;i++){P[i*3]=site.xy[i*2];P[i*3+1]=site.xy[i*2+1]}
+const dm=mesh(P,C,gl.TRIANGLES,true);
+function lines(polys,rgb,zf){const a=[];for(const q of polys){const n=q.length/2;for(let i=0;i<n-1;i++){a.push(q[i*2],q[i*2+1],zf,q[i*2+2],q[i*2+3],zf)}}const c=new Float32Array(a.length);for(let i=0;i<a.length;i+=3)c.set(rgb,i);return[new Float32Array(a),c]}
+const zcell=D.cells.length;
+function gridSeg(){const a=[];for(const q of D.grid)for(let i=0;i<q.length/2;i++){const j=(i+1)%(q.length/2);a.push(q[i*2],q[i*2+1],0,q[j*2],q[j*2+1],0)}return new Float32Array(a)}
+const gs=gridSeg(),gl1=mesh(gs,new Float32Array(gs.length).fill(.9),gl.LINES,true);
+const bp=[];for(const q of D.bd)for(let i=0;i<q.length/2-1;i++)bp.push(q[i*2],q[i*2+1],0,q[i*2+2],q[i*2+3],0);
+const bf=new Float32Array(bp),bc=new Float32Array(bf.length);for(let i=0;i<bc.length;i+=3)bc.set([1,.9,0],i);const bm=mesh(bf,bc,gl.LINES,true);
+const tal=D.taluy?mesh(...expand(D.taluy.v,D.taluy.t,[.8,.58,.24]),gl.TRIANGLES):null;
+if(!D.taluy)$("lt0").style.display="none";if(!D.pits.length&&!D.piles.length)$("lp0").style.display="none";
+const pits=D.pits.map(q=>{const n=q.v.length/3,top=Math.max(...q.v.filter((_,i)=>i%3==2)),t=[];for(let i=0;i<q.t.length;i+=3){const a=q.t.slice(i,i+3);if(a.every(k=>Math.abs(q.v[k*3+2]-top)<1e-6))continue;t.push(...a)}return mesh(...expand(q.v,t,[.25,.5,.85]),gl.TRIANGLES)});
+let plm=null;if(D.piles.length){const a=[];for(const q of D.piles)a.push(q[0],q[1],q[2],q[0],q[1],q[2]-q[4]);const f=new Float32Array(a),c=new Float32Array(f.length).fill(.85);plm=mesh(f,c,gl.LINES)}
+let secl=null;
+// -- hình học khối lượng
+const volTri=(function(){return function(a,h){const pos=[h[0]>0,h[1]>0,h[2]>0],np=pos[0]+pos[1]+pos[2];let vf=0,vc=0;const m=(h[0]+h[1]+h[2])/3;if(np==3)return[a*m,0];if(np==0)return[0,-a*m];
+let o;if(np==1)o=pos[0]?0:pos[1]?1:2;else o=!pos[0]?0:!pos[1]?1:2;const h0=h[o],h1=h[(o+1)%3],h2=h[(o+2)%3],fr=h0/(h0-h1)*h0/(h0-h2),vs=a*fr*h0/3,vo=a*m-vs;return h0>0?[vs,-vo]:[vo,-vs]}})();
+const area=new Float64Array(N);for(let i=0;i<N;i++){const k=i*6,x=site.xy;area[i]=.5*Math.abs((x[k+2]-x[k])*(x[k+5]-x[k+1])-(x[k+4]-x[k])*(x[k+3]-x[k+1]))}
+function stats(d){let f=0,c=0;const h=[0,0,0];for(let i=0;i<N;i++){for(let j=0;j<3;j++){let v=site.zd[i*3+j]+d-site.zg[i*3+j];h[j]=Math.abs(v)<1e-9?1e-9:v}const r=volTri(area[i],h);f+=r[0];c+=r[1]}return[f,c]}
+SN.stats=stats;
+let off=0,Ez=5,kK=D.K;
+function fmt(v){return v.toLocaleString("vi-VN",{maximumFractionDigits:1})}
+function refresh(){const d=off;for(let i=0;i<N*3;i++){const zd=site.zd[i]+d,h=zd-site.zg[i];P[i*3+2]=zd;const t=Math.min(Math.abs(h)/1.5,1);
+if(h>=0){C[i*3]=.93-.81*t;C[i*3+1]=.93-.45*t;C[i*3+2]=.75-.53*t}else{C[i*3]=.93-.23*t;C[i*3+1]=.87-.72*t;C[i*3+2]=.72-.52*t}}
+gl.bindBuffer(gl.ARRAY_BUFFER,dm.b);gl.bufferSubData(gl.ARRAY_BUFFER,0,P);gl.bindBuffer(gl.ARRAY_BUFFER,dm.c);gl.bufferSubData(gl.ARRAY_BUFFER,0,C);
+const zAt=(x,y)=>heightD(x,y);for(let i=0;i<gs.length;i+=3)gs[i+2]=(zAt(gs[i],gs[i+1])??Z0)+.03;gl.bindBuffer(gl.ARRAY_BUFFER,gl1.b);gl.bufferSubData(gl.ARRAY_BUFFER,0,gs);
+for(let i=0;i<bf.length;i+=3)bf[i+2]=(zAt(bf[i],bf[i+1])??Z0)+.05;gl.bindBuffer(gl.ARRAY_BUFFER,bm.b);gl.bufferSubData(gl.ARRAY_BUFFER,0,bf);
+const [f,c]=stats(d),e=d===0?D.extra:{tf:0,tc:0,pit:D.extra.pit,pile:D.extra.pile};$("vf").textContent=fmt(f)+" m³";$("vc").textContent=fmt(c)+" m³";
+const ex=e.tc+e.pit+e.pile-kK*e.tf;$("ex").textContent=fmt(e.tc+e.pit+e.pile)+" / "+fmt(e.tf);$("exl").textContent=d===0?"Đào / đắp ngoài ranh":"Hố móng, cọc";
+const s=c+e.tc+e.pit+e.pile-kK*(f+e.tf);$("sur").textContent=(s>0?"+":"")+fmt(s)+" m³";
+$("lvl").textContent=D.flat?(D.levelBase+d).toFixed(2)+" m":(d>=0?"+":"")+d.toFixed(2)+" m";$("exv").textContent="× "+Ez;draw()}
+// tra cao độ thiết kế theo lưới chia nhóm
+const bx={};const B=8;function bk(x,y){return Math.floor(x/B)+"_"+Math.floor(y/B)}
+for(let i=0;i<N;i++){const k=i*6,xs=[site.xy[k],site.xy[k+2],site.xy[k+4]],ys=[site.xy[k+1],site.xy[k+3],site.xy[k+5]];
+for(let a=Math.floor(Math.min(...xs)/B);a<=Math.floor(Math.max(...xs)/B);a++)for(let b=Math.floor(Math.min(...ys)/B);b<=Math.floor(Math.max(...ys)/B);b++){(bx[a+"_"+b]=bx[a+"_"+b]||[]).push(i)}}
+function bary(i,x,y){const k=i*6,s=site.xy,x1=s[k],y1=s[k+1],x2=s[k+2],y2=s[k+3],x3=s[k+4],y3=s[k+5],d=(y2-y3)*(x1-x3)+(x3-x2)*(y1-y3);if(Math.abs(d)<1e-12)return null;const a=((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/d,b=((y3-y1)*(x-x3)+(x1-x3)*(y-y3))/d,c=1-a-b;return a>-1e-4&&b>-1e-4&&c>-1e-4?[a,b,c]:null}
+function find(x,y){for(const i of bx[bk(x,y)]||[]){const w=bary(i,x,y);if(w)return[i,w]}return null}
+function heightD(x,y){const r=find(x,y);if(!r)return null;const[i,w]=r;return w[0]*site.zd[i*3]+w[1]*site.zd[i*3+1]+w[2]*site.zd[i*3+2]+off}
+function heightG(x,y){const r=find(x,y);if(!r)return null;const[i,w]=r;return w[0]*site.zg[i*3]+w[1]*site.zg[i*3+1]+w[2]*site.zg[i*3+2]}
+// -- camera
+let xmin=1e9,xmax=-1e9,ymin=1e9,ymax=-1e9;for(let i=0;i<site.xy.length;i+=2){const x=site.xy[i],y=site.xy[i+1];if(x<xmin)xmin=x;if(x>xmax)xmax=x;if(y<ymin)ymin=y;if(y>ymax)ymax=y}
+const span=Math.hypot(xmax-xmin,ymax-ymin);const home={th:-1.25,ph:.62,r:span*1.12,c:[(xmin+xmax)/2,(ymin+ymax)/2,0]};
+if(innerWidth<innerHeight)home.r*=1.9;
+let cam0=null;const padL=()=>($("panel").style.display!="none"&&innerWidth>=760?324:0);let cam=null;
+function mul(a,b){const o=new Float32Array(16);for(let i=0;i<4;i++)for(let j=0;j<4;j++)o[j*4+i]=a[i]*b[j*4]+a[i+4]*b[j*4+1]+a[i+8]*b[j*4+2]+a[i+12]*b[j*4+3];return o}
+function eyeOf(){const c=Math.cos(cam.ph);return[cam.c[0]+cam.r*c*Math.cos(cam.th),cam.c[1]+cam.r*c*Math.sin(cam.th),cam.c[2]+cam.r*Math.sin(cam.ph)]}
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dt=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],nz=a=>{const l=Math.hypot(...a);return a.map(v=>v/l)};
+function vp(){const w=cv.width-padL()*devicePixelRatio,h=cv.height,e=eyeOf(),z=nz(sub(e,cam.c)),x=nz(cr([0,0,1],z)),y=cr(z,x);
+const V=new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dt(x,e),-dt(y,e),-dt(z,e),1]);const f=1/Math.tan(.42),n=cam.r/50,fr=cam.r*12;
+const Pm=new Float32Array([f/(w/h),0,0,0,0,f,0,0,0,0,(fr+n)/(n-fr),-1,0,0,2*fr*n/(n-fr),0]);return{m:mul(Pm,V),e,x,y,z,f,asp:w/h}}
+function draw(){const w=cv.clientWidth*devicePixelRatio,h=cv.clientHeight*devicePixelRatio;if(cv.width!=w||cv.height!=h){cv.width=w;cv.height=h}
+gl.viewport(padL()*devicePixelRatio,0,w-padL()*devicePixelRatio,h);gl.clearColor(.129,.157,.188,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);const c=vp();gl.uniformMatrix4fv(uM,false,c.m);gl.uniform1f(uE,Ez);gl.uniform1f(uZ,Z0);
+const dr=(m,L,A)=>{gl.uniform1f(uL,L);gl.uniform1f(uA,A);gl.bindVertexArray(m.a);gl.drawArrays(m.mode,0,m.n)};
+if($("ld").checked)dr(dm,1,1);if($("lc").checked)dr(gl1,0,1);dr(bm,0,1);if(tal&&$("lt").checked&&off===0)dr(tal,1,1);if(secl)dr(secl,0,1);
+if($("lg").checked){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);dr(gnd,1,$("ld").checked?.3:1);gl.disable(gl.BLEND)}
+if($("lp").checked){gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);pits.forEach(m=>dr(m,1,.65));if(plm)dr(plm,0,1);gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST)}}
+// -- tương tác
+let drag=null,moved=0,secMode=0,secA=null;const ptrs=new Map();let pinch=0;
+function ray(px,py){const c=vp(),r=cv.getBoundingClientRect(),nx=(px-r.left-padL())/(r.width-padL())*2-1,ny=1-(py-r.top)/r.height*2,d=nz([c.x[0]*nx*c.asp/c.f+c.y[0]*ny/c.f-c.z[0],c.x[1]*nx*c.asp/c.f+c.y[1]*ny/c.f-c.z[1],c.x[2]*nx*c.asp/c.f+c.y[2]*ny/c.f-c.z[2]]);return[c.e,d]}
+function hit(px,py){const[o,d]=ray(px,py);let best=null,bt=1e12;for(let i=0;i<N;i++){const a=[P[i*9],P[i*9+1],(P[i*9+2]-Z0)*Ez],b=[P[i*9+3],P[i*9+4],(P[i*9+5]-Z0)*Ez],c=[P[i*9+6],P[i*9+7],(P[i*9+8]-Z0)*Ez],e1=sub(b,a),e2=sub(c,a),p=cr(d,e2),det=dt(e1,p);if(Math.abs(det)<1e-12)continue;const s=sub(o,a),u=dt(s,p)/det;if(u<0||u>1)continue;const q=cr(s,e1),v=dt(d,q)/det;if(v<0||u+v>1)continue;const t=dt(e2,q)/det;if(t>0&&t<bt){bt=t;best=i}}return best==null?null:{i:best,x:o[0]+d[0]*bt,y:o[1]+d[1]*bt}}
+function showCell(i){const c=D.cells[site.own[i]];const el=$("info");el.style.display="block";el.innerHTML=`<b>${c.k} ô ${c.n}</b><table><tr><td>Diện tích</td><td>${c.a} m²</td></tr><tr><td>V đắp lưới ô</td><td>${c.gf} m³</td></tr><tr><td>V đào lưới ô</td><td>${c.gc} m³</td></tr><tr><td>V đắp TIN</td><td>${c.vf} m³</td></tr><tr><td>V đào TIN</td><td>${c.vc} m³</td></tr></table>`}
+SN.showCell=showCell;SN.hit=hit;
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag={x:e.clientX,y:e.clientY,b:e.button};moved=0;pinch=0});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);if(ptrs.size==2){const[a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)cam.r=Math.max(span*.04,cam.r*pinch/d);pinch=d;moved=9;draw();return}if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+if(drag.b==2||e.shiftKey){const c=vp(),s=cam.r/cv.clientHeight*.9;for(let i=0;i<3;i++)cam.c[i]+=(-dx*c.x[i]+dy*c.y[i])*s}else{cam.th-=dx*.006;cam.ph=Math.min(1.54,Math.max(.03,cam.ph+dy*.006))}draw()});
+cv.addEventListener("pointerup",e=>{ptrs.delete(e.pointerId);if(moved<6&&drag){const r=hit(e.clientX,e.clientY);if(secMode&&r){pickSec(r.x,r.y)}else if(r)showCell(r.i);else $("info").style.display="none"}drag=null});
+cv.addEventListener("wheel",e=>{e.preventDefault();cam.r=Math.max(span*.04,cam.r*Math.exp(e.deltaY*.001));draw()},{passive:false});
+addEventListener("resize",draw);
+$("off").oninput=e=>{off=+e.target.value;refresh()};
+$("reset").onclick=()=>{off=0;$("off").value=0;refresh()};
+$("bal").onclick=()=>{let a=-3,b=3;const fn=d=>{const[f,c]=stats(d);return c+D.extra.pit+D.extra.pile-kK*f};for(let i=0;i<30;i++){const m=(a+b)/2;if(fn(m)>0)a=m;else b=m}off=Math.round((a+b)*50)/100;$("off").value=off;refresh()};
+$("k").oninput=e=>{kK=+e.target.value||1;refresh()};$("ez").oninput=e=>{Ez=+e.target.value;refresh()};
+["lg","ld","lc","lt","lp"].forEach(i=>$(i).onchange=draw);
+$("view").onclick=()=>{cam=JSON.parse(JSON.stringify(home));draw()};
+$("hide").onclick=()=>{$("panel").style.display="none";$("open").style.display="block";draw()};$("open").onclick=()=>{$("panel").style.display="";$("open").style.display="none";draw()};
+$("secb").onclick=()=>{secMode=1;secA=null;$("hint").style.display="block";$("hint").textContent="Bấm điểm đầu mặt cắt"};
+$("secx").onclick=()=>{$("sec").style.display="none";secl=null;draw()};
+function pickSec(x,y){if(!secA){secA=[x,y];$("hint").textContent="Bấm điểm cuối mặt cắt";return}secMode=0;$("hint").style.display="none";section(secA,[x,y])}
+function section(a,b){const n=240,L=Math.hypot(b[0]-a[0],b[1]-a[1]),G=[],Dz=[],lp=[];for(let i=0;i<=n;i++){const t=i/n,x=a[0]+t*(b[0]-a[0]),y=a[1]+t*(b[1]-a[1]);G.push(heightG(x,y));Dz.push(heightD(x,y));lp.push(x,y,(Dz[i]??Z0)+.1)}
+const lf=[];for(let i=0;i<n;i++)lf.push(...lp.slice(i*3,i*3+6));const f=new Float32Array(lf),c=new Float32Array(f.length);for(let i=0;i<c.length;i+=3)c.set([1,.36,1],i);secl=mesh(f,c,gl.LINES);draw();
+const S=$("sec");S.style.display="block";const sc=$("sc"),r=sc.getBoundingClientRect();sc.width=r.width*devicePixelRatio;sc.height=r.height*devicePixelRatio;const g=sc.getContext("2d");g.scale(devicePixelRatio,devicePixelRatio);const W=r.width,H=r.height,ml=52,mb=26,mt=14,mr=14;
+const zs=[...G,...Dz].filter(v=>v!=null);if(!zs.length){g.fillText("Mặt cắt nằm ngoài ranh",20,30);return}let lo=Math.min(...zs),hi=Math.max(...zs);if(hi-lo<.5){hi+=.25;lo-=.25}const px=i=>ml+i/n*(W-ml-mr),py=z=>mt+(hi-z)/(hi-lo)*(H-mt-mb);
+g.fillStyle="#fff";g.fillRect(0,0,W,H);g.strokeStyle="#c9ced6";g.fillStyle="#16191d";g.font="12px Arial";for(let k=0;k<=4;k++){const z=lo+(hi-lo)*k/4,y=py(z);g.beginPath();g.moveTo(ml,y);g.lineTo(W-mr,y);g.stroke();g.fillText(z.toFixed(2),8,y+4)}for(let k=0;k<=5;k++){const x=px(k/5*n);g.fillText((L*k/5).toFixed(0)+" m",x-10,H-8)}
+for(let i=0;i<n;i++){const a1=G[i],b1=G[i+1],c1=Dz[i],d1=Dz[i+1];if(a1==null||b1==null||c1==null||d1==null)continue;const up=(c1+d1)>(a1+b1);g.fillStyle=up?"#1f7a3d55":"#b32d3a55";g.beginPath();g.moveTo(px(i),py(a1));g.lineTo(px(i+1),py(b1));g.lineTo(px(i+1),py(d1));g.lineTo(px(i),py(c1));g.fill()}
+const ln=(A,col)=>{g.strokeStyle=col;g.lineWidth=2;g.beginPath();let st=0;A.forEach((v,i)=>{if(v==null){st=0;return}st?g.lineTo(px(i),py(v)):g.moveTo(px(i),py(v));st=1});g.stroke()};ln(G,"#8a5a2b");ln(Dz,"#16191d");g.fillStyle="#16191d";g.font="bold 12px Arial";g.fillText("Đen: thiết kế. Nâu: mặt đất.",ml+6,mt+12)}
+SN.section=section;
+D.levelBase=parseFloat(D.design[0])||0;if(!D.flat)$("lvlname").textContent="Dịch mặt thiết kế";
+if(innerWidth<760){$("panel").style.display="none";$("open").style.display="block"}
+cam=JSON.parse(JSON.stringify(home));
+refresh();
+</script></body></html>

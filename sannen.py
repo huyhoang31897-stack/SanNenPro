@@ -17,6 +17,7 @@ Ví dụ:
   python sannen.py "ban ve.dwg" --td 2.5 --taluy-dao 1 --taluy-dap 1.5 --boc 0.3
   python sannen.py "ban ve.dwg" --list-layers
   python sannen.py "ban ve.dwg" --td 2.5 --json --no-dwg
+  python sannen.py "ban ve.dwg" --td 2.5 --3d          # thêm HTML 3D, IFC, LandXML
 """
 from __future__ import annotations
 
@@ -50,7 +51,7 @@ from shapely import affinity
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
-__version__ = "2.2"
+__version__ = "2.3"
 
 DEFAULTS = {
     "layer_pts": "TL-CDTN",      # cao độ tự nhiên
@@ -71,6 +72,7 @@ DEFAULTS = {
     "layer_pile": "TL-Coc",    # cọc khoan nhồi (CIRCLE hoặc block)
     "pile_len": None,     # chiều dài cọc (m)
     "pile_dia": None,     # đường kính cọc nếu tim cọc là block (m)
+    "export_3d": False,   # xuất SanNen_3D.html, SanNen_3D.ifc, SanNen_TIN.xml
     "taluy_max": 30.0,    # bề rộng mái tối đa (m)
     "step": 5.0,          # bước lưới (m)
     "rot": None,          # góc lưới (độ); None = theo cạnh dài ranh giới
@@ -1040,7 +1042,21 @@ def calc_taluy(zones, tin, cfg, noslope=None):
     band = np.count_nonzero(g)
     short = float(np.count_nonzero(c["miss"] & (g != 0)) / band) if band else 0.0
     width = float(c["d"][g != 0].max()) if band else 0.0
-    return dict(vf=vf, vc=vc, sf=sf, sc=sc, lines=lines, short=short, width=width, W=c["W"],
+    # lưới tam giác mặt mái cho mô hình 3D, bước khoảng 1 m
+    st = max(1, int(round(1.0 / c["res"])))
+    Zg = np.full(c["shape"][0] * c["shape"][1], np.nan)
+    Zg[c["idx"]] = c["zg"]
+    top = (Zg.reshape(c["shape"]) + G)[::st, ::st]
+    K = keep[::st, ::st] & ~np.isnan(top)
+    xs, ys = c["xs"][::st], c["ys"][::st]
+    vid = -np.ones(K.shape, int)
+    vid[K] = np.arange(int(K.sum()))
+    jj, ii = np.nonzero(K)
+    pts = np.c_[xs[ii], ys[jj], top[K]].tolist() if K.any() else []
+    a, b, cc, d = vid[:-1, :-1], vid[:-1, 1:], vid[1:, :-1], vid[1:, 1:]
+    q = (a >= 0) & (b >= 0) & (cc >= 0) & (d >= 0)
+    faces = np.r_[np.c_[a[q], b[q], d[q]], np.c_[a[q], d[q], cc[q]]].tolist()
+    return dict(vf=vf, vc=vc, sf=sf, sc=sc, lines=lines, short=short, width=width, W=c["W"], mesh=dict(pts=pts, faces=faces),
                 mc=cfg["taluy_cut"], mf=cfg["taluy_fill"], names=[z["name"] for z in zones],
                 skipped=float(np.count_nonzero(c["blocked"]) * da))
 
@@ -1850,6 +1866,19 @@ def run(inputs, cfg, out=None, no_dwg=False):
         log(f"  {p['name']}: đáy {p['zb']}, V = {p['v']:.1f} m3")
     for p in X["piles"]:
         log(f"  Cọc D{p['d']}: {p['n']} cọc, V = {p['v']:.1f} m3")
+    if piles and cfg["pile_len"]:
+        pp = []
+        for x, y, r in piles:
+            dia = 2 * r if r else cfg["pile_dia"]
+            if not dia:
+                continue
+            pt = Point(x, y)
+            top = next((p["zb"] for p in X["pits"] if p["zb"] is not None and p["poly"].contains(pt)), None)
+            if top is None:
+                zz = [z for z in zones if z["poly"].contains(pt)]
+                top = float(zz[0]["design"](np.array([[x, y]]))[0]) if zz else float(tin.filled(np.array([[x, y]]))[0][0] - cfg["strip"])
+            pp.append(dict(x=x, y=y, top=top, d=dia, L=cfg["pile_len"]))
+        X["pile_points"] = pp
 
     log("3. Cân bằng đào đắp và kiểm tra số liệu")
     mer = Merged(ovs)
@@ -1871,6 +1900,10 @@ def run(inputs, cfg, out=None, no_dwg=False):
     if not no_dwg:
         d = dxf_to_dwg(dxf)
         log("  DWG: " + (d.name if d else "bỏ qua, dùng file DXF"))
+    if cfg["export_3d"]:
+        import sannen3d
+        f3 = sannen3d.export(out, zones, tin, T, X, cfg, bal)
+        log("  3D: " + ", ".join(p.name for p in f3))
 
     S = lambda k: sum(z[k] for z in zones)
     log(f"\nKẾT QUẢ\n  Lưới ô: đắp {S('vf'):,.2f} | đào {S('vc'):,.2f} m3\n  TIN   : đắp {S('tvf'):,.2f} | đào {S('tvc'):,.2f} m3")
@@ -1902,6 +1935,7 @@ def main(argv=None):
     ap.add_argument("--d-coc", type=float, dest="pile_dia", help="đường kính cọc khi tim cọc là block (m)")
     ap.add_argument("--layer", action="append", default=[], metavar="LOAI=TEN",
                     help="chỉ định layer: pts, tk, bdy, brk, pit, pile, noslope; lặp lại được")
+    ap.add_argument("--3d", action="store_true", dest="export_3d", help="xuất mô hình 3D: HTML, IFC (Navisworks, Revit), LandXML (Civil 3D)")
     ap.add_argument("--list-layers", action="store_true", help="in JSON các layer và layer tự nhận, không tính")
     ap.add_argument("--json", action="store_true", help="in JSON kết quả ra stdout, nhật ký chuyển sang stderr")
     ap.add_argument("--use-grid", action="store_true", help="dùng lại lưới TL-Luoi có sẵn để đối chiếu HML")
@@ -1919,6 +1953,7 @@ def main(argv=None):
             cfg[k] = v
     cfg["use_grid"] = cfg["use_grid"] or a.use_grid
     cfg["fix_bdy"] = cfg["fix_bdy"] and not a.no_fix_ranh
+    cfg["export_3d"] = cfg["export_3d"] or a.export_3d
     for item in a.layer:
         key, _, name = item.partition("=")
         if f"layer_{key}" not in cfg or not name:
