@@ -14,7 +14,9 @@ Ví dụ:
   python sannen.py "ban ve.dwg" --td -0.6 --step 5
   python sannen.py a.dwg b.dwg --config config.json --out KetQua
   python sannen.py "ban ve.dwg" --use-grid        # dùng lại lưới HML có sẵn để đối chiếu
-  python sannen.py "ban ve.dwg" --td 2.5 --taluy-dao 1 --taluy-dap 1.5
+  python sannen.py "ban ve.dwg" --td 2.5 --taluy-dao 1 --taluy-dap 1.5 --boc 0.3
+  python sannen.py "ban ve.dwg" --list-layers
+  python sannen.py "ban ve.dwg" --td 2.5 --json --no-dwg
 """
 from __future__ import annotations
 
@@ -48,7 +50,7 @@ from shapely import affinity
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
-__version__ = "2.1"
+__version__ = "2.2"
 
 DEFAULTS = {
     "layer_pts": "TL-CDTN",      # cao độ tự nhiên
@@ -61,6 +63,14 @@ DEFAULTS = {
     "taluy_cut": None,    # hệ số mái đào m (1:m); None = không tính
     "taluy_fill": None,   # hệ số mái đắp m (1:m); None = không tính
     "taluy_res": 0.5,     # bước lưới tính taluy (m)
+    "layer_noslope": "TL-KhongTaluy",  # cạnh không làm mái
+    "strip": 0.0,         # chiều dày bóc phong hoá (m)
+    "layer_pit": "TL-HoMong",  # hố móng, tầng hầm
+    "pit_slope": 0.0,     # hệ số mái hố 1:m; 0 = thành đứng
+    "pit_bottom": None,   # cao độ đáy hố nếu không ghi trong bản vẽ
+    "layer_pile": "TL-Coc",    # cọc khoan nhồi (CIRCLE hoặc block)
+    "pile_len": None,     # chiều dài cọc (m)
+    "pile_dia": None,     # đường kính cọc nếu tim cọc là block (m)
     "taluy_max": 30.0,    # bề rộng mái tối đa (m)
     "step": 5.0,          # bước lưới (m)
     "rot": None,          # góc lưới (độ); None = theo cạnh dài ranh giới
@@ -86,6 +96,8 @@ NOWIN = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 def log(msg=""):
     if LOG_SINK:
         LOG_SINK(msg)
+    elif os.environ.get("SANNEN_STDERR"):       # chế độ --json, kể cả tiến trình con
+        print(msg, file=sys.stderr, flush=True)
     elif sys.stdout:
         print(msg, flush=True)
 
@@ -151,7 +163,7 @@ def dxf_to_dwg(dxf: Path) -> Path | None:
 
 # ------------------------------------------------------------------- Đọc CAD
 NUM = re.compile(r"^[+-]?\d+(?:[.,]\d+)?$")
-SCAN_VER = 4
+SCAN_VER = 5
 ELEV_TAGS = {"Z", "ELEV", "ELEVATION", "CAODO", "CAO_DO", "CD", "LEVEL", "H", "CDTN"}
 
 
@@ -165,6 +177,9 @@ class Source:
     labels: list = field(default_factory=list)  # nhãn ô HML
     nodes: dict = field(default_factory=dict)   # cao độ nút HML
     brk: list = field(default_factory=list)     # đường gãy [[x,y,z],...]
+    noslope: list = field(default_factory=list) # đường không làm taluy
+    pits: list = field(default_factory=list)    # (Polygon, cao độ đáy)
+    piles: list = field(default_factory=list)   # (x, y, bán kính)
     layers: dict = field(default_factory=dict)
 
 
@@ -202,7 +217,7 @@ def line_pts(e):
 
 def scan_entities(entities):
     """Gom dữ liệu theo layer, độc lập với cấu hình nên dùng lại được qua cache."""
-    R = dict(num={}, closed={}, lines={}, labels=[], nodes={})
+    R = dict(num={}, closed={}, lines={}, labels=[], nodes={}, circles={}, inserts={})
     for e in entities:
         t, l = e.dxftype(), e.dxf.layer
         try:
@@ -214,6 +229,9 @@ def scan_entities(entities):
             elif t == "POINT":
                 p = e.dxf.location
                 R["num"].setdefault(l, []).append([p[0], p[1], p[2]])
+            elif t == "CIRCLE":
+                p = e.dxf.center
+                R["circles"].setdefault(l, []).append([p[0], p[1], e.dxf.radius])
             elif t in ("LINE", "LWPOLYLINE", "POLYLINE"):
                 pts, closed = line_pts(e)
                 if len(pts) >= 2:
@@ -221,6 +239,7 @@ def scan_entities(entities):
             elif t == "INSERT":
                 a = [(x.dxf.tag.upper(), x.dxf.text.strip()) for x in e.attribs]
                 p, name = e.dxf.insert, e.dxf.name.upper()
+                R["inserts"].setdefault(l, []).append([p[0], p[1]])
                 if "OKHOILUONG" in name and len(a) >= 5:
                     R["labels"].append(dict(x=p[0], y=p[1], name=a[0][1], sf=float(a[1][1]), sc=float(a[2][1]),
                                             vf=float(a[3][1]), vc=float(a[4][1])))
@@ -253,7 +272,7 @@ def load_raw(path):
         return pickle.loads(pk.read_bytes())
     is_dwg = path.suffix.lower() == ".dwg"
     dxf = dwg_to_dxf(path) if is_dwg else path
-    types = ["TEXT", "MTEXT", "POINT", "INSERT", "LINE", "LWPOLYLINE", "POLYLINE"]
+    types = ["TEXT", "MTEXT", "POINT", "INSERT", "LINE", "LWPOLYLINE", "POLYLINE", "CIRCLE"]
     try:
         doc = iterdxf.opendxf(str(dxf))
         try:
@@ -313,7 +332,16 @@ def pick_layers(raw, cfg):
     brk = cfg["layer_brk"] if cfg["layer_brk"] in raw["lines"] or cfg["layer_brk"] in closed else None
     if brk is None and cfg["auto_layer"]:
         brk = next((l for l in list(raw["lines"]) + list(closed) if re.search(r"break|duong.?gay|\bgay\b", norm(l))), None)
-    return dict(pts=pts, tk=tk, bdy=bdy, brk=brk)
+    pit = cfg["layer_pit"] if cfg["layer_pit"] in closed else None
+    if pit is None and cfg["auto_layer"]:
+        pit = next((l for l in closed if re.search(r"ho.?mong|excav|\bham\b|\bpit\b", norm(l))), None)
+    pile = cfg["layer_pile"] if cfg["layer_pile"] in raw["circles"] or cfg["layer_pile"] in raw["inserts"] else None
+    if pile is None and cfg["auto_layer"]:
+        pile = next((l for l in list(raw["circles"]) + list(raw["inserts"]) if re.search(r"\bcoc\b|\bpile", norm(l))), None)
+    ns = cfg["layer_noslope"] if cfg["layer_noslope"] in raw["lines"] or cfg["layer_noslope"] in closed else None
+    if ns is None and cfg["auto_layer"]:
+        ns = next((l for l in list(raw["lines"]) + list(closed) if re.search(r"khong.?taluy|no.?slope|tuong.?chan|retain", norm(l))), None)
+    return dict(pts=pts, tk=tk, bdy=bdy, brk=brk, pit=pit, pile=pile, noslope=ns)
 
 
 def to_poly(ring):
@@ -337,6 +365,16 @@ def make_source(path, raw, cfg):
     if L["brk"]:
         src.brk = raw["lines"].get(L["brk"], []) + [r + r[:1] for r in raw["closed"].get(L["brk"], [])]
     src.labels, src.nodes = raw["labels"], raw["nodes"]
+    if L["noslope"]:
+        src.noslope = raw["lines"].get(L["noslope"], []) + [r + r[:1] for r in raw["closed"].get(L["noslope"], [])]
+    if L["pit"]:
+        texts = raw["num"].get(L["pit"], [])
+        for g in filter(None, map(to_poly, raw["closed"][L["pit"]])):
+            zb = next((t[2] for t in texts if g.contains(Point(t[0], t[1]))), cfg["pit_bottom"])
+            src.pits.append((g, zb))
+    if L["pile"]:
+        src.piles = [(c[0], c[1], c[2]) for c in raw["circles"].get(L["pile"], [])]
+        src.piles += [(c[0], c[1], None) for c in raw["inserts"].get(L["pile"], [])]
     # bỏ các điểm mẫu nằm xa ranh giới (HML để template rất xa khu đo)
     if src.bdys:
         keep = unary_union(src.bdys).buffer(cfg["margin"])
@@ -344,7 +382,9 @@ def make_source(path, raw, cfg):
         for name in ("pts", "tk"):
             setattr(src, name, [r for r in getattr(src, name) if x0 <= r[0] <= x1 and y0 <= r[1] <= y1])
     log(f"  {src.path.name}: {len(src.pts)} điểm đo [{L['pts']}], {len(src.bdys)} ranh giới [{L['bdy']}], "
-        f"{len(src.tk)} điểm TK [{L['tk']}], {len(src.brk)} đường gãy [{L['brk']}], {len(src.grids)} ô lưới")
+        f"{len(src.tk)} điểm TK [{L['tk']}], {len(src.brk)} đường gãy [{L['brk']}], {len(src.grids)} ô lưới"
+        + (f", {len(src.pits)} hố móng [{L['pit']}]" if src.pits else "") + (f", {len(src.piles)} cọc [{L['pile']}]" if src.piles else "")
+        + (f", {len(src.noslope)} đoạn không taluy [{L['noslope']}]" if src.noslope else ""))
     return src
 
 
@@ -363,13 +403,31 @@ def read_sources(paths, cfg):
 
 def list_layers(paths):
     """Danh sách layer theo loại dữ liệu, cho giao diện."""
-    num, closed, lines = set(), set(), set()
+    num, closed, lines, pile = set(), set(), set(), set()
     for p in paths:
         r = load_raw(p)
         num |= set(r["num"])
         closed |= set(r["closed"])
         lines |= set(r["lines"])
-    return sorted(num), sorted(closed), sorted(lines | closed)
+        pile |= set(r["circles"]) | set(r["inserts"])
+    return sorted(num), sorted(closed), sorted(lines | closed), sorted(pile)
+
+
+def layer_report(paths):
+    """Mô tả từng layer dưới dạng dict để AI hoặc script chọn layer trước khi tính."""
+    out = {}
+    for p in paths:
+        r = load_raw(p)
+        for key, name in (("num", "elevation_points"), ("closed", "closed_polylines"), ("lines", "open_lines"),
+                          ("circles", "circles"), ("inserts", "block_inserts")):
+            for l, a in r[key].items():
+                d = out.setdefault(l, {})
+                d[name] = d.get(name, 0) + len(a)
+                if key == "num":
+                    z = [q[2] for q in a]
+                    d["z_min"] = min(z + [d.get("z_min", 1e18)])
+                    d["z_max"] = max(z + [d.get("z_max", -1e18)])
+    return dict(layers=out, auto=[pick_layers(load_raw(p), DEFAULTS) for p in paths])
 
 
 # ---------------------------------------------------------------- Mặt TIN
@@ -617,7 +675,7 @@ def cell_calc(c, tin, design, cfg):
     if cfg["round_dp"] is not None:
         zn = np.round(zn, cfg["round_dp"])
     zt = np.round(design(xy), 3)
-    h = np.round(zt - zn, 6)
+    h = np.round(zt - zn + cfg["strip"], 6)
     fill, cut, zero = split_cell([tuple(p) for p in xy], h, cfg["saddle"])
     rec = dict(sf=0.0, sc=0.0, vf=0.0, vc=0.0)
     for parts, a, v in ((fill, "sf", "vf"), (cut, "sc", "vc")):
@@ -893,20 +951,16 @@ def build_zones(sources, cfg):
     return zones, notes
 
 
-def calc_taluy(zones, tin, cfg):
-    """Mái taluy từ mép ranh giới ra ngoài đến khi gặp mặt đất, tính trên lưới điểm.
-    Mép đang đắp thì mái đổ xuống 1:m đắp, mép đang đào thì mái dốc lên 1:m đào."""
-    mc, mf = cfg["taluy_cut"], cfg["taluy_fill"]
-    if not mc and not mf:
-        return None
+def taluy_ctx(zones, tin, cfg, res=None, noslope=None):
+    """Chuẩn bị lưới điểm ngoài ranh giới, dùng lại khi thử nhiều cao độ."""
     polys = [z["poly"] for z in zones]
     u = unary_union(polys)
     bd = u.boundary
-    res = float(cfg["taluy_res"])
+    res = float(res or cfg["taluy_res"])
     W = float(cfg["taluy_max"])
     x0, y0, x1, y1 = u.buffer(W).bounds
-    xs = np.arange(x0, x1 + res, res)
-    ys = np.arange(y0, y1 + res, res)
+    xs = np.arange(x0, x1 + res, res) + res / 2   # tâm ô, tránh điểm nằm đúng trên ranh
+    ys = np.arange(y0, y1 + res, res) + res / 2
     X, Y = np.meshgrid(xs, ys)
     x, y = X.ravel(), Y.ravel()
     P = shapely.points(x, y)
@@ -914,57 +968,181 @@ def calc_taluy(zones, tin, cfg):
     dist = shapely.distance(P, bd)
     idx = np.where(~inside & (dist <= W))[0]
     d = dist[idx]
-    sl = shapely.shortest_line(P[idx], bd)
-    edge = shapely.get_coordinates(shapely.get_point(sl, 1))
+    edge = shapely.get_coordinates(shapely.get_point(shapely.shortest_line(P[idx], bd), 1))
     owner = STRtree(polys).nearest(shapely.points(edge))
-    ze = np.zeros(len(idx))
-    for i, z in enumerate(zones):
-        m = owner == i
-        if m.any():
-            ze[m] = z["design"](edge[m])
+    blocked = np.zeros(len(idx), bool)
+    if noslope:
+        g = unary_union([LineString([q[:2] for q in l]) for l in noslope]).buffer(0.5)
+        blocked = shapely.contains_xy(g, edge[:, 0], edge[:, 1])
     zg, miss = tin.filled(np.c_[x[idx], y[idx]])
     zge = tin.filled(edge)[0]
-    h = np.zeros(len(idx))     # >0 đắp, <0 đào
-    if mf:
-        m = ze >= zge
-        v = ze[m] - d[m] / mf - zg[m]
-        h[m] = np.where(v > 0, v, 0)
-    if mc:
-        m = ze < zge
-        v = ze[m] + d[m] / mc - zg[m]
-        h[m] = np.where(v < 0, v, 0)
-    # chỉ giữ phần liền với ranh giới, bỏ chỗ trũng/gò nằm xa mái
-    G = np.zeros(x.size)
-    G[idx] = h
-    G = G.reshape(X.shape)
+    n = len(zones)
+    zcfg = [cfg["zones"].get(z["name"], {}) for z in zones]
+    mc = np.array([c.get("taluy_cut", cfg["taluy_cut"]) or 0 for c in zcfg], float)[owner]
+    mf = np.array([c.get("taluy_fill", cfg["taluy_fill"]) or 0 for c in zcfg], float)[owner]
     D = np.full(x.size, np.inf)
     D[idx] = d
-    D = D.reshape(X.shape)
-    keep = np.zeros(X.shape, bool)
+    return dict(res=res, W=W, xs=xs, ys=ys, shape=X.shape, idx=idx, d=d, edge=edge, owner=owner, blocked=blocked,
+                zg=zg - cfg["strip"], zge=zge - cfg["strip"], miss=miss, mc=mc, mf=mf, n=n, D=D.reshape(X.shape),
+                inside=inside.reshape(X.shape))
+
+
+def taluy_eval(c, ze):
+    """ze: cao độ thiết kế tại mép. Trả về lưới h (>0 đắp, <0 đào) sau khi bỏ phần không liền ranh."""
+    d, zg, zge = c["d"], c["zg"], c["zge"]
+    h = np.zeros(len(d))
+    m = (ze >= zge) & (c["mf"] > 0) & ~c["blocked"]
+    v = ze[m] - d[m] / c["mf"][m] - zg[m]
+    h[m] = np.where(v > 0, v, 0)
+    m = (ze < zge) & (c["mc"] > 0) & ~c["blocked"]
+    v = ze[m] + d[m] / c["mc"][m] - zg[m]
+    h[m] = np.where(v < 0, v, 0)
+    G = np.zeros(c["shape"][0] * c["shape"][1])
+    G[c["idx"]] = h
+    G = G.reshape(c["shape"])
+    keep = np.zeros(c["shape"], bool)
     for sign in (1, -1):
         lab, n = ndimage.label(sign * G > 0, structure=np.ones((3, 3)))
         if n:
-            near = np.unique(lab[(D <= res * 1.5) & (lab > 0)])
+            near = np.unique(lab[(c["D"] <= c["res"] * 1.5) & (lab > 0)])
             keep |= np.isin(lab, near)
-    G = np.where(keep, G, 0)
-    g = G.ravel()[idx]
-    n = len(zones)
-    da = res * res
+    return np.where(keep, G, 0), keep
+
+
+def calc_taluy(zones, tin, cfg, noslope=None):
+    """Mái taluy từ mép ranh giới ra ngoài đến khi gặp mặt đất, tính trên lưới điểm.
+    Mép đang đắp thì mái đổ xuống 1:m đắp, mép đang đào thì mái dốc lên 1:m đào.
+    Cạnh nằm dọc đường trên layer không taluy (tường chắn, ranh đất) thì bỏ qua."""
+    has_m = cfg["taluy_cut"] or cfg["taluy_fill"] or any(
+        c.get("taluy_cut") or c.get("taluy_fill") for c in cfg["zones"].values())
+    if not has_m:
+        return None
+    c = taluy_ctx(zones, tin, cfg, noslope=noslope)
+    ze = np.zeros(len(c["d"]))
+    for i, z in enumerate(zones):
+        m = c["owner"] == i
+        if m.any():
+            ze[m] = z["design"](c["edge"][m])
+    G, keep = taluy_eval(c, ze)
+    g = G.ravel()[c["idx"]]
+    n, owner = c["n"], c["owner"]
+    da = c["res"] ** 2
     vf = np.bincount(owner, np.where(g > 0, g, 0) * da, n)
     vc = np.bincount(owner, np.where(g < 0, -g, 0) * da, n)
     sf = np.bincount(owner, (g > 0) * da, n)
     sc = np.bincount(owner, (g < 0) * da, n)
     from contourpy import contour_generator
-    F = inside.reshape(X.shape) | keep
+    F = c["inside"] | keep
     lines = []
-    for a in contour_generator(xs, ys, ndimage.gaussian_filter(F.astype(float), 0.7)).lines(0.5):
+    for a in contour_generator(c["xs"], c["ys"], ndimage.gaussian_filter(F.astype(float), 0.7)).lines(0.5):
         if len(a) > 3:
-            lines.append(np.array(LineString(a).simplify(res / 2).coords))
+            lines.append(np.array(LineString(a).simplify(c["res"] / 2).coords))
     band = np.count_nonzero(g)
-    short = float(np.count_nonzero(miss & (g != 0)) / band) if band else 0.0
-    width = float(d[g != 0].max()) if band else 0.0
-    return dict(vf=vf, vc=vc, sf=sf, sc=sc, lines=lines, short=short, width=width, W=W, mc=mc, mf=mf,
-                names=[z["name"] for z in zones])
+    short = float(np.count_nonzero(c["miss"] & (g != 0)) / band) if band else 0.0
+    width = float(c["d"][g != 0].max()) if band else 0.0
+    return dict(vf=vf, vc=vc, sf=sf, sc=sc, lines=lines, short=short, width=width, W=c["W"],
+                mc=cfg["taluy_cut"], mf=cfg["taluy_fill"], names=[z["name"] for z in zones],
+                skipped=float(np.count_nonzero(c["blocked"]) * da))
+
+
+def calc_pits(zones, tin, cfg, pits):
+    """Hố móng, tầng hầm: đáy phẳng, mái 1:m (m = 0 là thành đứng), đào từ mặt sau san nền.
+    Phần trong ranh lấy cao độ thiết kế, ngoài ranh lấy mặt đất."""
+    res = 0.25
+    polys = [z["poly"] for z in zones]
+    u = unary_union(polys)
+    out = []
+    for i, (pg, zb) in enumerate(pits):
+        if zb is None:
+            out.append(dict(name=f"HM-{i + 1:02d}", area=pg.area, zb=None, v=0.0, top=None, poly=pg))
+            continue
+        m = float(cfg["pit_slope"] or 0)
+        x0, y0, x1, y1 = pg.bounds
+        probe = np.array(pg.exterior.coords)
+        tmax = float(max(np.max(tin.filled(probe)[0]), max(z["design"](probe).max() for z in zones)))
+        W = max((tmax - zb) * m, 0) + 1.0
+        xs = np.arange(x0 - W, x1 + W + res, res)
+        ys = np.arange(y0 - W, y1 + W + res, res)
+        X, Y = np.meshgrid(xs + res / 2, ys + res / 2)
+        x, y = X.ravel(), Y.ravel()
+        P = shapely.points(x, y)
+        d = shapely.distance(P, pg)      # 0 trong hố
+        keep = d <= (W if m else 0)
+        x, y, d, P = x[keep], y[keep], d[keep], P[keep]
+        top = tin.filled(np.c_[x, y])[0] - cfg["strip"]
+        ins = shapely.contains_xy(u, x, y)
+        if ins.any():
+            who = STRtree(polys).nearest(P[ins])
+            q = np.c_[x[ins], y[ins]]
+            zd = np.zeros(len(q))
+            for k, z in enumerate(zones):
+                w = who == k
+                if w.any():
+                    zd[w] = z["design"](q[w])
+            top[ins] = zd
+        bottom = zb + (d / m if m else 0.0)   # mái 1:m: đi ngang m thì lên 1
+        h = np.maximum(top - bottom, 0)
+        out.append(dict(name=f"HM-{i + 1:02d}", area=pg.area, zb=zb, v=float(h.sum() * res * res),
+                        top=float(top[d == 0].mean()) if (d == 0).any() else None, poly=pg))
+    return out
+
+
+def calc_piles(cfg, piles):
+    L = cfg["pile_len"]
+    rows = {}
+    for x, y, r in piles:
+        dia = 2 * r if r else cfg["pile_dia"]
+        rows.setdefault(round(dia, 3) if dia else None, []).append((x, y))
+    out = []
+    for dia, a in sorted(rows.items(), key=lambda t: t[0] or 0):
+        v = len(a) * math.pi / 4 * dia ** 2 * L if dia and L else 0.0
+        out.append(dict(d=dia, n=len(a), L=L, v=v))
+    return out
+
+
+def balance_full(mer, K, ctx, extra):
+    """Cao độ phẳng để tổng đào (gồm taluy, hố móng, cọc) = K x tổng đắp (gồm taluy)."""
+    lo, hi = float(mer.z.min()) - 1, float(mer.z.max()) + 1
+    def f(td):
+        Vf, Vc, _, _ = mer.volumes(td - mer.z)
+        a, b = float(Vc.sum()) + extra, float(Vf.sum())
+        if ctx:
+            G = taluy_eval(ctx, np.full(len(ctx["d"]), td))[0]
+            da = ctx["res"] ** 2
+            a += float(-G[G < 0].sum() * da)
+            b += float(G[G > 0].sum() * da)
+        return a - K * b
+    for _ in range(28):
+        m = (lo + hi) / 2
+        if f(m) > 0:
+            lo = m
+        else:
+            hi = m
+    return (lo + hi) / 2
+
+
+def summary(zones, T, X, bal, cfg, Q, inputs, out, files, layers):
+    S = lambda k: float(sum(z[k] for z in zones))
+    tf, tc = (float(T["vf"].sum()), float(T["vc"].sum())) if T else (0.0, 0.0)
+    pv, cv = sum(p["v"] for p in X["pits"]), sum(p["v"] for p in X["piles"])
+    K = cfg["k"]
+    return dict(
+        version=__version__, inputs=[str(p) for p in inputs], output_dir=str(out), layers=layers,
+        params={k: cfg[k] for k in ("td", "step", "rot", "k", "strip", "taluy_cut", "taluy_fill", "pit_slope", "pile_len", "pile_dia")},
+        zones=[dict(name=z["name"], design=z["design"].text(), cells=len(z["cells"]), area_m2=round(z["area"], 2),
+                    fill_grid_m3=round(z["vf"], 2), cut_grid_m3=round(z["vc"], 2),
+                    fill_tin_m3=round(z["tvf"], 2), cut_tin_m3=round(z["tvc"], 2)) for z in zones],
+        totals=dict(area_m2=round(S("area"), 2), fill_grid_m3=round(S("vf"), 2), cut_grid_m3=round(S("vc"), 2),
+                    fill_tin_m3=round(S("tvf"), 2), cut_tin_m3=round(S("tvc"), 2),
+                    strip_m3=round(X["strip_v"], 2), slope_fill_m3=round(tf, 2), slope_cut_m3=round(tc, 2),
+                    pit_m3=round(pv, 2), pile_m3=round(cv, 2),
+                    surplus_tin_m3=round(S("tvc") + tc + pv + cv - K * (S("tvf") + tf), 2)),
+        pits=[dict(name=p["name"], area_m2=round(p["area"], 2), bottom=p["zb"], volume_m3=round(p["v"], 2)) for p in X["pits"]],
+        piles=[dict(diameter=p["d"], count=p["n"], length=p["L"], volume_m3=round(p["v"], 2)) for p in X["piles"]],
+        balance=dict(level_inside=round(bal[0], 3), level_all_items=round(bal[2], 3)),
+        warnings=[f"{t}: {x}" for l, t, x in Q if l == "CẢNH BÁO"],
+        errors=[f"{t}: {x}" for l, t, x in Q if l == "LỖI"],
+        fixed=[x for l, t, x in Q if l == "ĐÃ SỬA"], files=[str(f) for f in files])
 
 
 def compute(zones, tin, cfg):
@@ -977,7 +1155,7 @@ def compute(zones, tin, cfg):
                 dz = [abs(nodes[k] - v) for k, v in ((f"{q[0]:.2f},{q[1]:.2f}", v) for q, v in zip(c["xy"], c["zn"])) if k in nodes]
                 c["node_diff"] = max(dz, default=0.0)
         ov = Overlay(tin, z["cells"])
-        h = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3) - ov.z
+        h = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3) - (ov.z - cfg["strip"])
         Vf, Vc, Sf, Sc = ov.volumes(h)
         n = len(z["cells"])
         vf, vc = np.bincount(ov.own, Vf, n), np.bincount(ov.own, Vc, n)
@@ -1015,7 +1193,7 @@ def hml_cause(c):
     return "Làm tròn cao độ nút 1 cm"
 
 
-def quality(zones, pts, chk, cfg, tin, T, notes):
+def quality(zones, pts, chk, cfg, tin, T, notes, X=None):
     Q = []
     def add(level, topic, text):
         Q.append((level, topic, text))
@@ -1071,6 +1249,17 @@ def quality(zones, pts, chk, cfg, tin, T, notes):
         add("OK" if T["short"] < 0.05 else "CẢNH BÁO", "Taluy", f"{100 * T['short']:.1f}% diện tích mái nằm ngoài vùng có điểm đo, cao độ đất tại đó lấy theo điểm gần nhất")
         if T["width"] >= T["W"] - 2 * cfg["taluy_res"]:
             add("CẢNH BÁO", "Taluy", f"Mái chạm giới hạn rộng {T['W']:.0f} m, khối lượng taluy có thể thiếu")
+    if T and T.get("skipped"):
+        add("OK", "Taluy", f"Bỏ mái ở các cạnh trên layer không taluy, khoảng {T['skipped']:.0f} m2 mặt bằng ngoài ranh")
+    if X:
+        if cfg["strip"]:
+            add("OK", "Bóc phong hoá", f"Dày {cfg['strip']} m, khối lượng {X['strip_v']:.2f} m3")
+        for p in X["pits"]:
+            if p["zb"] is None:
+                add("CẢNH BÁO", "Hố móng", f"{p['name']} chưa có cao độ đáy, chưa tính. Ghi TEXT cao độ trong polyline hoặc nhập cao độ đáy")
+        for p in X["piles"]:
+            if not p["v"]:
+                add("CẢNH BÁO", "Cọc", f"{p['n']} cọc chưa tính được khối lượng, thiếu chiều dài hoặc đường kính")
     if cfg["use_grid"]:
         C = {}
         for z in zones:
@@ -1083,7 +1272,8 @@ def quality(zones, pts, chk, cfg, tin, T, notes):
 
 
 # ---------------------------------------------------------------- Excel
-def write_excel(path, zones, cfg, bal, Q, K, T=None):
+def write_excel(path, zones, cfg, bal, Q, K, T=None, X=None):
+    X = X or dict(strip_v=0.0, pits=[], piles=[])
     from openpyxl import Workbook
     from openpyxl.chart import LineChart, Reference
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -1121,7 +1311,8 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None):
         s = wb.create_sheet(z["name"][:31])
         nv = max(4, max(len(c["zn"]) for c in z["cells"]))
         title(s, f"BẢNG TÍNH KHỐI LƯỢNG SAN NỀN - {z['name']} / Earthwork quantities",
-              f"Cao độ thiết kế: {z['design'].text()}  |  Bước lưới {cfg['step']} m  |  Đơn vị: m, m2, m3")
+              f"Cao độ thiết kế: {z['design'].text()}  |  Bước lưới {cfg['step']} m  |  Đơn vị: m, m2, m3"
+              + (f"  |  Đã trừ bóc phong hoá {cfg['strip']} m khi tính khối lượng" if cfg["strip"] else ""))
         r1, r2 = 4, 5
         cols = ["Tên ô"]
         s.cell(r1, 1, "Tên ô\nCell")
@@ -1232,10 +1423,15 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None):
         tf, tc = float(T["vf"].sum()), float(T["vc"].sum())
     line("V đắp taluy", round(tf, 2), round(tf, 2))
     line("V đào taluy", round(tc, 2), round(tc, 2))
+    pv, cv = sum(p["v"] for p in X["pits"]), sum(p["v"] for p in X["piles"])
+    line("V đào hố móng", round(pv, 2), round(pv, 2))
+    line("V đất khoan cọc", round(cv, 2), round(cv, 2))
     line("Đất cần cho đắp (K x V đắp)", f"=E{kr}*(E{a0}+E{a0 + 2})", f"=F{kr}*(F{a0}+F{a0 + 2})")
-    line("Đất thừa (+) / thiếu (-)", f"=E{a0 + 1}+E{a0 + 3}-E{a0 + 4}", f"=F{a0 + 1}+F{a0 + 3}-F{a0 + 4}",
+    line("Đất thừa (+) / thiếu (-)", f"=E{a0 + 1}+E{a0 + 3}+E{a0 + 4}+E{a0 + 5}-E{a0 + 6}", f"=F{a0 + 1}+F{a0 + 3}+F{a0 + 4}+F{a0 + 5}-F{a0 + 6}",
          "#,##0.00;[Red]-#,##0.00", True)
-    line("Cao độ cân bằng (TIN)", round(bal[0], 3), None, "0.000", True)
+    line("Đất bóc phong hoá, không dùng đắp", round(X["strip_v"], 2), round(X["strip_v"], 2))
+    line("Cao độ cân bằng trong ranh (TIN)", round(bal[0], 3), None, "0.000", True)
+    line("Cao độ cân bằng gồm mọi hạng mục", round(bal[2], 3), None, "0.000", True)
     ws.column_dimensions["A"].width = 6
     ws.column_dimensions["B"].width = 14
     ws.column_dimensions["C"].width = 13
@@ -1293,6 +1489,29 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None):
             L = CL(2 + j)
             body(s.cell(r, 2 + j, f"=SUM({L}5:{L}{r - 1})"), "#,##0.00", True, TEAL)
         for col in "ABCDE":
+            s.column_dimensions[col].width = 14
+        s.sheet_view.showGridLines = False
+
+    # Hố móng, cọc
+    if X["pits"] or X["piles"]:
+        s = wb.create_sheet("Hố móng, cọc")
+        title(s, "HỐ MÓNG VÀ CỌC / Pits and piles", f"Mái hố 1:{cfg['pit_slope']}, đào từ mặt sau san nền")
+        for i, t in enumerate(["Hạng mục", "Diện tích đáy (m2)", "Cao độ đáy", "Số cọc", "D (m)", "L (m)", "V (m3)"]):
+            head(s.cell(4, 1 + i, t))
+        r = 5
+        for p in X["pits"]:
+            for j, v in enumerate((p["name"], round(p["area"], 2), p["zb"], None, None, None, round(p["v"], 2))):
+                body(s.cell(r, 1 + j, v), None if j in (0, 3, 4, 5) else "#,##0.00")
+            r += 1
+        for p in X["piles"]:
+            for j, v in enumerate((f"Cọc D{p['d']}", None, None, p["n"], p["d"], p["L"], round(p["v"], 2))):
+                body(s.cell(r, 1 + j, v), "#,##0.00" if j == 6 else None)
+            r += 1
+        body(s.cell(r, 1, "TỔNG CỘNG"), bold=True, fill=TEAL)
+        for j in range(2, 7):
+            body(s.cell(r, j), fill=TEAL)
+        body(s.cell(r, 7, f"=SUM(G5:G{r - 1})"), "#,##0.00", True, TEAL)
+        for col in "ABCDEFG":
             s.column_dimensions[col].width = 14
         s.sheet_view.showGridLines = False
 
@@ -1367,7 +1586,7 @@ def recalc_excel(path):
 # ---------------------------------------------------------------- Bản vẽ DXF
 LAYERS = {
     "SN-RanhGioi": 1, "SN-Luoi": 8, "SN-DiemDo": 9, "SN-Nut": 7, "SN-DuongKhong": 6,
-    "SN-Dap": 3, "SN-Dao": 1, "SN-O": 7, "SN-Bang": 7, "SN-Taluy": 30,
+    "SN-Dap": 3, "SN-Dao": 1, "SN-O": 7, "SN-Bang": 7, "SN-Taluy": 30, "SN-HoMong": 5,
 }
 
 
@@ -1376,7 +1595,7 @@ def text_rot(a):
     return (a + 45) % 90 - 45
 
 
-def write_dxf(path, zones, pts, cfg, K, bal, T=None):
+def write_dxf(path, zones, pts, cfg, K, bal, T=None, X=None):
     doc = ezdxf.new("R2013", setup=False)
     doc.header["$INSUNITS"] = 6
     doc.styles.add("SN", font="arial.ttf")
@@ -1430,7 +1649,7 @@ def write_dxf(path, zones, pts, cfg, K, bal, T=None):
                                       VDAP=f"Vđắp={c['vf']:.2f}", VDAO=f"Vđào={c['vc']:.2f}"))
         for (x, y), (zn, zt) in nodes.items():
             ref = msp.add_blockref("SN_NUT", (x, y), dxfattribs={"layer": "SN-Nut", "rotation": text_rot(z["rot"])})
-            ref.add_auto_attribs(dict(CDTN=f"{zn:.2f}", CDTK=f"{zt:.2f}", CC=f"{zt - zn:+.2f}"))
+            ref.add_auto_attribs(dict(CDTN=f"{zn:.2f}", CDTK=f"{zt:.2f}", CC=f"{zt - zn + cfg['strip']:+.2f}"))
 
     # bảng tổng hợp đặt bên phải khu vực
     B = unary_union([z["poly"] for z in zones]).bounds
@@ -1443,6 +1662,16 @@ def write_dxf(path, zones, pts, cfg, K, bal, T=None):
         rows.append(["Taluy", float(T["sf"].sum() + T["sc"].sum()), float(T["vf"].sum()), float(T["vc"].sum()), float(T["vf"].sum()), float(T["vc"].sum())])
         for a in T["lines"]:
             msp.add_lwpolyline([tuple(q) for q in a], dxfattribs={"layer": "SN-Taluy"})
+    for p in (X or {}).get("pits", []):
+        msp.add_lwpolyline(list(p["poly"].exterior.coords[:-1]), close=True, dxfattribs={"layer": "SN-HoMong"})
+        c = p["poly"].representative_point()
+        msp.add_text(f"{p['name']} V={p['v']:,.1f}", dxfattribs={"layer": "SN-HoMong", "style": "SN", "height": th * 1.3, "insert": (c.x, c.y)})
+    if X and X["pits"]:
+        v = sum(p["v"] for p in X["pits"])
+        rows.append(["Hố móng", sum(p["area"] for p in X["pits"]), 0.0, v, 0.0, v])
+    if X and X["piles"]:
+        v = sum(p["v"] for p in X["piles"])
+        rows.append(["Cọc", 0.0, 0.0, v, 0.0, v])
     rows.append(["TỔNG", *[sum(r[i] for r in rows) for i in range(1, 6)]])
     rh = u * 0.8
     Hh = th * 2.2
@@ -1472,13 +1701,13 @@ def write_dxf(path, zones, pts, cfg, K, bal, T=None):
         y = ly - i * rh
         hatch([(x0, y), (x0 + u, y), (x0 + u, y + rh * .6), (x0, y + rh * .6)], "SN-Bang", col)
         msp.add_text(s, dxfattribs={"layer": "SN-Bang", "style": "SN", "height": th * 1.3, "insert": (x0 + u * 1.3, y + rh * .1)})
-    msp.add_text(f"Bước lưới {cfg['step']} m  |  K = {K}  |  Cao độ cân bằng (TIN): {bal[0]:.3f} m",
+    msp.add_text(f"Bước lưới {cfg['step']} m  |  K = {K}  |  Cao độ cân bằng: {bal[2]:.3f} m",
                  dxfattribs={"layer": "SN-Bang", "style": "SN", "height": th * 1.2, "insert": (x0, ly - 2 * rh)})
     doc.saveas(path)
 
 
 # ---------------------------------------------------------------- PDF báo cáo
-def write_pdf(path, zones, cfg, K, bal, Q, T=None):
+def write_pdf(path, zones, cfg, K, bal, Q, T=None, X=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -1527,8 +1756,15 @@ def write_pdf(path, zones, cfg, K, bal, Q, T=None):
         tf, tc, ts = (float(T["vf"].sum()), float(T["vc"].sum()), float(T["sf"].sum() + T["sc"].sum())) if T else (0, 0, 0)
         if T:
             rows.append(["Taluy", "", f"{ts:,.1f}", f"{tf:,.1f}", f"{tc:,.1f}", f"{tf:,.1f}", f"{tc:,.1f}"])
+        pv = sum(p["v"] for p in X["pits"]) if X else 0
+        cv = sum(p["v"] for p in X["piles"]) if X else 0
+        if pv:
+            rows.append(["Hố móng", "", "", "0.0", f"{pv:,.1f}", "0.0", f"{pv:,.1f}"])
+        if cv:
+            rows.append(["Cọc", "", "", "0.0", f"{cv:,.1f}", "0.0", f"{cv:,.1f}"])
         s = lambda k: sum(z[k] for z in zones)
-        rows.append(["TỔNG", "", f"{s('area') + ts:,.1f}", f"{s('vf') + tf:,.1f}", f"{s('vc') + tc:,.1f}", f"{s('tvf') + tf:,.1f}", f"{s('tvc') + tc:,.1f}"])
+        ex = tc + pv + cv
+        rows.append(["TỔNG", "", f"{s('area') + ts:,.1f}", f"{s('vf') + tf:,.1f}", f"{s('vc') + ex:,.1f}", f"{s('tvf') + tf:,.1f}", f"{s('tvc') + ex:,.1f}"])
         t = a1.table(cellText=rows, colLabels=hdr, loc="upper center", cellLoc="center")
         t.auto_set_font_size(False)
         t.set_fontsize(9)
@@ -1545,7 +1781,7 @@ def write_pdf(path, zones, cfg, K, bal, Q, T=None):
         a2.plot(tt, vf, color="#2E7D32", lw=2, label="V đắp")
         a2.plot(tt, vc, color="#C62828", lw=2, label="V đào")
         a2.axvline(bal[0], color="#1F3864", ls="--", lw=1)
-        a2.text(bal[0], a2.get_ylim()[1] * .92, f"  Cân bằng {bal[0]:.3f} m (K={K})", color="#1F3864", fontsize=10)
+        a2.text(bal[0], a2.get_ylim()[1] * .92, f"  Cân bằng trong ranh {bal[0]:.3f} m (K={K})", color="#1F3864", fontsize=10)
         a2.set_xlabel("Cao độ san phẳng (m)")
         a2.set_ylabel("m³")
         a2.grid(alpha=.3)
@@ -1597,22 +1833,41 @@ def run(inputs, cfg, out=None, no_dwg=False):
     chk = check_points(pts)
     zones, notes = build_zones(sources, cfg)
     ovs = compute(zones, tin, cfg)
-    T = calc_taluy(zones, tin, cfg)
+    noslope = [l for s in sources for l in s.noslope]
+    T = calc_taluy(zones, tin, cfg, noslope)
     if T:
         log(f"  Taluy: đắp {T['vf'].sum():.1f} / đào {T['vc'].sum():.1f} m3")
+    seen_p, pits = set(), []
+    for s in sources:
+        for g, zb in s.pits:
+            k = tuple(np.round(g.bounds, 2))
+            if k not in seen_p:
+                seen_p.add(k)
+                pits.append((g, zb))
+    piles = list({(round(x, 2), round(y, 2)): (x, y, r) for s in sources for x, y, r in s.piles}.values())
+    X = dict(strip_v=sum(z["area"] for z in zones) * cfg["strip"], pits=calc_pits(zones, tin, cfg, pits), piles=calc_piles(cfg, piles))
+    for p in X["pits"]:
+        log(f"  {p['name']}: đáy {p['zb']}, V = {p['v']:.1f} m3")
+    for p in X["piles"]:
+        log(f"  Cọc D{p['d']}: {p['n']} cọc, V = {p['v']:.1f} m3")
 
     log("3. Cân bằng đào đắp và kiểm tra số liệu")
-    bal = balance(Merged(ovs), cfg["k"])
-    Q = quality(zones, pts, chk, cfg, tin, T, notes)
+    mer = Merged(ovs)
+    mer.z = mer.z - cfg["strip"]
+    b0 = balance(mer, cfg["k"])
+    extra = sum(p["v"] for p in X["pits"]) + sum(p["v"] for p in X["piles"])
+    ctx = taluy_ctx(zones, tin, cfg, res=max(1.0, cfg["taluy_res"]), noslope=noslope) if T else None
+    bal = (b0[0], b0[1], balance_full(mer, cfg["k"], ctx, extra) if (ctx or extra) else b0[0])
+    Q = quality(zones, pts, chk, cfg, tin, T, notes, X)
     for lv, tp, tx in Q:
         if lv != "OK":
             log(f"  [{lv}] {tp}: {tx}")
 
     log("4. Xuất kết quả")
-    write_excel(out / "SanNen_KhoiLuong.xlsx", zones, cfg, bal, Q, cfg["k"], T)
+    write_excel(out / "SanNen_KhoiLuong.xlsx", zones, cfg, bal, Q, cfg["k"], T, X)
     dxf = out / "SanNen_MatBang.dxf"
-    write_dxf(dxf, zones, pts, cfg, cfg["k"], bal, T)
-    write_pdf(out / "SanNen_BaoCao.pdf", zones, cfg, cfg["k"], bal, Q, T)
+    write_dxf(dxf, zones, pts, cfg, cfg["k"], bal, T, X)
+    write_pdf(out / "SanNen_BaoCao.pdf", zones, cfg, cfg["k"], bal, Q, T, X)
     if not no_dwg:
         d = dxf_to_dwg(dxf)
         log("  DWG: " + (d.name if d else "bỏ qua, dùng file DXF"))
@@ -1621,8 +1876,13 @@ def run(inputs, cfg, out=None, no_dwg=False):
     log(f"\nKẾT QUẢ\n  Lưới ô: đắp {S('vf'):,.2f} | đào {S('vc'):,.2f} m3\n  TIN   : đắp {S('tvf'):,.2f} | đào {S('tvc'):,.2f} m3")
     if T:
         log(f"  Taluy : đắp {T['vf'].sum():,.2f} | đào {T['vc'].sum():,.2f} m3")
-    log(f"  Cao độ cân bằng (K={cfg['k']}): {bal[0]:.3f} m\n  Thư mục: {out}")
-    return dict(zones=zones, Q=Q, bal=bal, T=T, out=out, tin=tin)
+    if X["strip_v"] or X["pits"] or X["piles"]:
+        log(f"  Bóc phong hoá {X['strip_v']:,.2f} | hố móng {sum(p['v'] for p in X['pits']):,.2f} | cọc {sum(p['v'] for p in X['piles']):,.2f} m3")
+    log(f"  Cao độ cân bằng (K={cfg['k']}): {bal[0]:.3f} m trong ranh, {bal[2]:.3f} m gồm mọi hạng mục\n  Thư mục: {out}")
+    files = sorted(p for p in out.iterdir() if p.name.startswith("SanNen_"))
+    res = summary(zones, T, X, bal, cfg, Q, inputs, out, files, [s.layers for s in sources])
+    (out / "SanNen_KetQua.json").write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+    return dict(zones=zones, Q=Q, bal=bal, T=T, X=X, out=out, tin=tin, summary=res)
 
 
 def main(argv=None):
@@ -1635,6 +1895,15 @@ def main(argv=None):
     ap.add_argument("--k", type=float, help="hệ số K đất đào / đất đắp đã đầm")
     ap.add_argument("--taluy-dao", type=float, dest="taluy_cut", help="hệ số mái đào m (1:m)")
     ap.add_argument("--taluy-dap", type=float, dest="taluy_fill", help="hệ số mái đắp m (1:m)")
+    ap.add_argument("--boc", type=float, dest="strip", help="chiều dày bóc phong hoá (m)")
+    ap.add_argument("--mai-ho", type=float, dest="pit_slope", help="hệ số mái hố móng m (1:m); 0 = thành đứng")
+    ap.add_argument("--day-ho", type=float, dest="pit_bottom", help="cao độ đáy hố khi bản vẽ không ghi")
+    ap.add_argument("--dai-coc", type=float, dest="pile_len", help="chiều dài cọc khoan nhồi (m)")
+    ap.add_argument("--d-coc", type=float, dest="pile_dia", help="đường kính cọc khi tim cọc là block (m)")
+    ap.add_argument("--layer", action="append", default=[], metavar="LOAI=TEN",
+                    help="chỉ định layer: pts, tk, bdy, brk, pit, pile, noslope; lặp lại được")
+    ap.add_argument("--list-layers", action="store_true", help="in JSON các layer và layer tự nhận, không tính")
+    ap.add_argument("--json", action="store_true", help="in JSON kết quả ra stdout, nhật ký chuyển sang stderr")
     ap.add_argument("--use-grid", action="store_true", help="dùng lại lưới TL-Luoi có sẵn để đối chiếu HML")
     ap.add_argument("--no-fix-ranh", action="store_true", help="không tự sửa chồng lấn, khe hở ranh giới")
     ap.add_argument("--project", help="tên dự án")
@@ -1644,17 +1913,39 @@ def main(argv=None):
     cfg = dict(DEFAULTS)
     if a.config:
         cfg.update(json.loads(Path(a.config).read_text(encoding="utf-8")))
-    for k in ("td", "step", "rot", "k", "project", "taluy_cut", "taluy_fill"):
+    for k in ("td", "step", "rot", "k", "project", "taluy_cut", "taluy_fill", "strip", "pit_slope", "pit_bottom", "pile_len", "pile_dia"):
         v = getattr(a, k)
         if v is not None:
             cfg[k] = v
     cfg["use_grid"] = cfg["use_grid"] or a.use_grid
     cfg["fix_bdy"] = cfg["fix_bdy"] and not a.no_fix_ranh
-    return run(a.inputs, cfg, a.out, a.no_dwg)
+    for item in a.layer:
+        key, _, name = item.partition("=")
+        if f"layer_{key}" not in cfg or not name:
+            raise SystemExit(f"--layer sai: {item}. Dạng đúng: pts=TEN_LAYER")
+        cfg[f"layer_{key}"] = name
+    if a.list_layers:
+        print(json.dumps(layer_report(a.inputs), ensure_ascii=False, indent=2))
+        return None
+    if a.json:
+        os.environ["SANNEN_STDERR"] = "1"
+    r = run(a.inputs, cfg, a.out, a.no_dwg)
+    if a.json:
+        print(json.dumps(r["summary"], ensure_ascii=False, indent=2))
+    return r
 
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    main()
+        sys.stderr.reconfigure(encoding="utf-8")
+    try:
+        r = main()
+    except SystemExit as e:
+        if isinstance(e.code, str):       # lỗi đầu vào: thông báo ra stderr, mã 2
+            print(e.code, file=sys.stderr)
+            sys.exit(2)
+        raise
+    if r and r["summary"]["errors"]:
+        sys.exit(3)                       # có kết quả nhưng sheet Kiểm tra báo LỖI

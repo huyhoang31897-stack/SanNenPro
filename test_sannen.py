@@ -96,4 +96,57 @@ m.add_lwpolyline([(0, 0), (50, 0), (50, 30), (0, 30)], close=True, dxfattribs={"
 f = d / "khac layer.dxf"; doc.saveas(f)
 r = sn.run([f], dict(sn.DEFAULTS, td=3.0, k=1.0), d / "out", no_dwg=True)
 check("Tự nhận layer: V đắp từ DXF", r["zones"][0]["tvf"], 1500 * (3 - (0.02 * 25 + 1.5)), 1e-3)
+
+# 8. bóc phong hoá: đất 0, TK +1, bóc 0.3 trên ranh 100x50
+cfg3 = dict(cfg, strip=0.3)
+tin = sn.TIN(grid_pts(-20, 120, -20, 70, 10, lambda x, y: 0 * x))
+z = zone(box(0, 0, 100, 50), 1.0, cfg3)
+sn.compute([z], tin, cfg3)
+check("Bóc 0,3 m: V đắp ô", z["vf"], 5000 * 1.3, 1e-6)
+check("Bóc 0,3 m: V đắp TIN", z["tvf"], 5000 * 1.3, 1e-6)
+
+# 9. hố móng 10x10, đáy -2, mặt san 0
+cfg4 = dict(cfg, pit_slope=0.0)
+tin = sn.TIN(grid_pts(-40, 90, -40, 90, 10, lambda x, y: 0 * x))
+z = zone(box(0, 0, 50, 50), 0.0, cfg4)
+sn.compute([z], tin, cfg4)
+pg = box(20, 20, 30, 30)
+check("Hố thành đứng", sn.calc_pits([z], tin, cfg4, [(pg, -2.0)])[0]["v"], 200, 1.0)
+cfg4["pit_slope"] = 1.0
+check("Hố mái 1:1", sn.calc_pits([z], tin, cfg4, [(pg, -2.0)])[0]["v"], 200 + 40 * 2 + math.pi * 4 * 2 / 3, 2.0)
+cfg4["pit_slope"] = 0.5
+check("Hố mái 1:0,5", sn.calc_pits([z], tin, cfg4, [(pg, -2.0)])[0]["v"], 200 + 40 * 2 * 1 / 2 + math.pi * 1 * 2 / 3, 1.0)
+check("Hố thiếu cao độ đáy: không tính", sn.calc_pits([z], tin, cfg4, [(pg, None)])[0]["v"], 0, 0)
+
+# 10. cọc: 10 cọc D0.8 dài 20
+p = sn.calc_piles(dict(cfg, pile_len=20.0), [(i, 0, 0.4) for i in range(10)])
+check("Cọc D800 L20 x 10", p[0]["v"], 10 * math.pi / 4 * .64 * 20, 1e-6)
+
+# 11. taluy bỏ 1 cạnh dài 20 m: mất lăng trụ 20 x 0,75 và phần nón hai góc
+cfg5 = dict(cfg, taluy_fill=1.5, taluy_cut=1.0, taluy_res=0.1, taluy_max=5.0)
+tin = sn.TIN(grid_pts(-40, 60, -40, 50, 10, lambda x, y: 0 * x))
+z = zone(box(0, 0, 20, 10), 1.0, cfg5)
+sn.compute([z], tin, cfg5)
+T0 = sn.calc_taluy([z], tin, cfg5)
+T1 = sn.calc_taluy([z], tin, cfg5, [[(0, 0, 0), (20, 0, 0)]])
+check("Taluy bỏ 1 cạnh", float(T0["vf"].sum() - T1["vf"].sum()), 20 * .75 + math.pi * 2.25 / 6 + 2 * .5 * .75, 0.3)
+
+# 12. taluy khác nhau từng khu
+cfg6 = dict(cfg5, zones={"KV-01": {"taluy_fill": 3.0}})
+T2 = sn.calc_taluy([z], tin, cfg6)
+check("Taluy riêng từng khu 1:3", float(T2["vf"].sum()), 60 * 1 * 3 / 2 + math.pi * 9 / 3, 1.0)
+
+# 13. cân bằng gồm taluy và hố: tổng đào = K x tổng đắp tại cao độ tìm được
+tin = sn.TIN(grid_pts(-40, 140, -40, 90, 10, lambda x, y: 0.02 * x))
+cfg7 = dict(cfg, taluy_fill=1.5, taluy_cut=1.0, taluy_res=0.5, taluy_max=10.0)
+z = zone(box(0, 0, 100, 50), 1.0, cfg7)
+ov = sn.compute([z], tin, cfg7)
+mer = sn.Merged(ov)
+c = sn.taluy_ctx([z], tin, cfg7, res=0.5)
+td = sn.balance_full(mer, 1.15, c, 300.0)
+Vf, Vc, _, _ = mer.volumes(td - mer.z)
+G = sn.taluy_eval(c, np.full(len(c["d"]), td))[0]
+a = float(Vc.sum()) + 300 + float(-G[G < 0].sum() * .25)
+b = float(Vf.sum()) + float(G[G > 0].sum() * .25)
+check("Cân bằng đầy đủ: đào - K x đắp", a - 1.15 * b, 0, 1.0)
 print("TONG:", sum(R), "/", len(R), flush=True)

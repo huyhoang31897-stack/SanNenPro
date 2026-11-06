@@ -1,4 +1,4 @@
-SANNENPRO 2.1: TÍNH KHỐI LƯỢNG SAN NỀN
+SANNENPRO 2.2: TÍNH KHỐI LƯỢNG SAN NỀN
 
 CÀI ĐẶT
 - Giải nén, giữ nguyên thư mục SanNenPro. Không cần cài Python.
@@ -39,10 +39,19 @@ CÁCH TÍNH
 - Taluy: mái 1:m từ mép ranh giới đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m.
 - Nhiều khu: phần chồng lấn tính cho khu đứng trước, khe hở nhập vào khu kề.
 
+HẠNG MỤC BỔ SUNG
+- Bóc phong hoá: nhập chiều dày, khối lượng tính riêng và không dùng lại để đắp.
+- Hố móng, tầng hầm: polyline kín trên layer TL-HoMong (hoặc tên có chữ "ho mong", "ham"),
+  ghi TEXT cao độ đáy bên trong. Nhập hệ số mái, để trống là thành đứng.
+- Cọc khoan nhồi: CIRCLE đúng đường kính trên layer TL-Coc (hoặc tên có chữ "coc"). Nhập chiều dài.
+- Cạnh không làm taluy: vẽ line dọc cạnh đó trên layer TL-KhongTaluy (hoặc tên có chữ "tuong chan").
+- Cao độ cân bằng tính cả taluy, hố móng, cọc.
+- File "Khu dat mau day du.dxf" có sẵn đủ các hạng mục này.
+
 CHƯA LÀM ĐƯỢC
-- Taluy tính cho cả chu vi ngoài, chưa chọn được từng cạnh.
-- Chưa tính bóc phong hoá, cọc, hầm, hố móng.
-- Cao độ cân bằng chưa gồm taluy.
+- Đáy hố là mặt phẳng, chưa có hố giật cấp. Các hố chồng nhau sẽ tính trùng.
+- Taluy một mái liên tục, chưa có cơ. Khác hệ số mái theo khu khai báo trong file cấu hình.
+- Cọc chỉ tính đất khoan của cọc tròn, không trừ thể tích cọc nằm trong hố móng.
 Xem sheet Kiểm tra trong file Excel và tự rà lại số liệu trước khi dùng.
 
 Báo lỗi: https://github.com/huyhoang31897-stack/SanNenPro/issues

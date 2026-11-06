@@ -30,6 +30,8 @@ a{color:#0b4fb3}
 main{max-width:760px;margin:0 auto;padding:36px 20px 16px}
 h2{font-size:23px;line-height:1.25;margin:40px 0 10px}
 p{margin:0 0 12px}ol{margin:0 0 12px;padding-left:24px}ol li,ul li{margin-bottom:5px}ul{margin:0 0 12px;padding-left:22px}
+pre{background:#212830;color:#fff;padding:14px 16px;font:15px/1.5 Arial,"Liberation Sans",sans-serif;white-space:pre-wrap;margin:0 0 10px}
+#copy{font:700 16px Arial,"Liberation Sans",sans-serif;background:#ffe600;color:#16191d;border:1px solid #16191d;padding:9px 16px;cursor:pointer}
 table.d{border-collapse:collapse;width:100%;margin:6px 0 14px;font-size:16px}
 table.d th,table.d td{border:1px solid #16191d;padding:7px 10px;text-align:left;vertical-align:top}
 table.d th{font-weight:700;background:#eef0f2}
@@ -46,8 +48,8 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <table class="block">
 <tr><td colspan="2" class="name">SanNenPro</td></tr>
 <tr><td colspan="2" class="what">Tính khối lượng san nền từ DWG/DXF</td></tr>
-<tr><td>Phiên bản 2.1</td><td>Windows</td></tr>
-<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.1.zip">Tải về (99 MB)</a></td></tr>
+<tr><td>Phiên bản 2.2</td><td>Windows</td></tr>
+<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.2.zip">Tải về (99 MB)</a></td></tr>
 </table>
 </div>
 <main>
@@ -62,12 +64,13 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <li>Nhập cao độ thiết kế, bước lưới, hệ số K. Có taluy thì nhập hệ số mái.</li>
 <li>Bấm <b>CHẠY</b>, xong bấm <b>Mở kết quả</b>.</li>
 </ol>
-<figure><img src="giaodien.png" alt="Cửa sổ SanNenPro sau khi tính xong" width="916" height="759" loading="lazy"></figure>
+<figure><img src="giaodien.png" alt="Cửa sổ SanNenPro sau khi tính xong" width="936" height="839" loading="lazy"></figure>
 
 <h2>Thử với file mẫu</h2>
 <p>Trong bản tải về có thư mục <b>Mau</b>. Chọn file mẫu, nhập cao độ thiết kế −0,6 rồi bấm CHẠY. Có thể xem kết quả trước khi tải chương trình:</p>
 <ul>
-<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/Khu_dat_mau.dxf">Khu_dat_mau.dxf</a>: bản vẽ đầu vào, 620 điểm cao độ, 3 khu</li>
+<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/Khu_dat_mau.dxf">Khu_dat_mau.dxf</a>: 620 điểm cao độ, 3 khu</li>
+<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/Khu_dat_mau_day_du.dxf">Khu_dat_mau_day_du.dxf</a>: thêm hố móng, 20 cọc, tường chắn</li>
 <li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/SanNen_KhoiLuong.xlsx">SanNen_KhoiLuong.xlsx</a></li>
 <li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/SanNen_MatBang.dwg">SanNen_MatBang.dwg</a></li>
 <li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/SanNen_BaoCao.pdf">SanNen_BaoCao.pdf</a></li>
@@ -80,13 +83,16 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <tr><td>Ranh giới</td><td>Polyline kín, mỗi khu một polyline</td></tr>
 <tr><td>Cao độ thiết kế</td><td>Nhập tay, hoặc TEXT trên layer riêng</td></tr>
 <tr><td>Đường gãy, nếu có</td><td>Line hoặc polyline, tên layer có chữ break hoặc duong gay</td></tr>
+<tr><td>Cạnh không làm taluy</td><td>Line dọc cạnh đó, tên layer có chữ tuong chan hoặc khong taluy</td></tr>
+<tr><td>Hố móng, tầng hầm</td><td>Polyline kín, tên layer có chữ ho mong hoặc ham, TEXT cao độ đáy đặt bên trong</td></tr>
+<tr><td>Cọc khoan nhồi</td><td>CIRCLE đúng đường kính, tên layer có chữ coc</td></tr>
 </table>
 <p>Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm <b>Đọc danh sách layer</b> và chọn lại.</p>
 
 <h2>Kết quả</h2>
 <table class="d">
 <tr><th>File</th><th>Nội dung</th></tr>
-<tr><td>SanNen_KhoiLuong.xlsx</td><td>Bảng từng khu, tổng hợp, cân đối đất theo K, cân bằng đào đắp, taluy, kiểm tra số liệu</td></tr>
+<tr><td>SanNen_KhoiLuong.xlsx</td><td>Bảng từng khu, tổng hợp, cân đối đất theo K, cân bằng đào đắp, taluy, hố móng, cọc, kiểm tra số liệu</td></tr>
 <tr><td>SanNen_MatBang.dwg</td><td>Lưới, cao độ nút, đào đắp từng ô, đường 0, chân taluy</td></tr>
 <tr><td>SanNen_BaoCao.pdf</td><td>Bản đồ đào đắp, tổng hợp, đường cong cân bằng, cảnh báo</td></tr>
 </table>
@@ -97,12 +103,16 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <ul>
 <li><b>Lưới ô:</b> V = S × trung bình |h| các đỉnh ô, tách theo đường h = 0.</li>
 <li><b>TIN:</b> cắt tam giác theo ô và tích phân; đường gãy được ép thành cạnh tam giác.</li>
-<li><b>Taluy:</b> mái 1:m từ mép ranh giới đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m.</li>
+<li><b>Taluy:</b> mái 1:m từ mép ranh giới đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m. Hệ số mái có thể khác nhau theo khu.</li>
+<li><b>Bóc phong hoá:</b> trừ chiều dày vào mặt đất trước khi tính; đất bóc tính riêng, không dùng lại để đắp.</li>
+<li><b>Hố móng:</b> đáy phẳng, mái 1:m, đào từ mặt sau san nền, cộng vào đất đào.</li>
+<li><b>Cọc:</b> V = π/4 × D² × L × số cọc, cộng vào đất đào.</li>
+<li><b>Cân bằng:</b> tìm cao độ để đào, taluy, hố móng và cọc bằng K × tổng đắp.</li>
 <li><b>Nhiều khu:</b> phần chồng lấn tính cho khu đứng trước, khe hở nhập vào khu kề.</li>
 </ul>
 
 <h2>Đã kiểm tra</h2>
-<p>20 bài toán có đáp số tính tay đều đạt. Đối chiếu với HML trên 649 ô của một công trình thực tế, 617 ô lệch không quá 0,02. 32 ô còn lại lệch do làm tròn cao độ nút hoặc do đỉnh có h = 0.</p>
+<p>30 phép kiểm tra có đáp số tính tay đều đạt, gồm taluy, hố móng, cọc, bóc phong hoá và cân bằng. Đối chiếu với HML trên 649 ô của một công trình thực tế, 617 ô lệch không quá 0,02. 32 ô còn lại lệch do làm tròn cao độ nút hoặc do đỉnh có h = 0.</p>
 
 <h2>Ví dụ thực tế</h2>
 <p>Khu đất 7 khu vực, khoảng 16.400 m², đã tính bằng HML. Chạy lại bằng SanNenPro cho thấy khu cuối sót 14 ô (191 m², khoảng 59 m³), 4 chỗ ranh giới chồng lấn tổng 55 m² bị tính hai lần và 21 m² khe hở chưa được tính.</p>
@@ -116,14 +126,35 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <h2>Trong AutoCAD</h2>
 <p>Mở SanNenPro.exe một lần, dùng APPLOAD nạp <b>sannen.lsp</b>. Lệnh <b>SANNEN</b> mở chương trình với bản vẽ đang mở, lệnh <b>SANNENKQ</b> chèn kết quả đúng tọa độ.</p>
 
+<h2>Để AI chạy</h2>
+<p>Trợ lý AI chạy được Python có thể làm từ đầu đến cuối mà không cần mở giao diện. Tài liệu riêng cho AI nằm ở <a href="https://github.com/huyhoang31897-stack/SanNenPro/blob/main/AGENTS.md">AGENTS.md</a>: cách cài, quy trình, tham số, mã thoát và cấu trúc kết quả JSON. Máy không có AutoCAD thì đưa bản vẽ dạng DXF.</p>
+<p>Điền thông số rồi dán đoạn này cho AI cùng file bản vẽ:</p>
+<pre id="prompt">Dùng tool SanNenPro tại https://github.com/huyhoang31897-stack/SanNenPro
+để tính khối lượng san nền cho bản vẽ tôi gửi.
+Đọc file AGENTS.md trong repo và làm đúng quy trình đó.
+
+Cao độ thiết kế:
+Bước lưới: 5 m
+Hệ số K:
+Mái đào, mái đắp:
+Bóc phong hoá:
+Mái hố móng, chiều dài cọc:
+
+Thiếu thông số thì hỏi tôi, không tự đoán. Trả về bảng khối lượng,
+đất thừa hoặc thiếu, các cảnh báo và file kết quả.</pre>
+<button id="copy" type="button">Sao chép</button>
+
 <h2>Chưa làm được</h2>
 <ul>
-<li>Taluy tính cho cả chu vi ngoài, chưa chọn được từng cạnh.</li>
-<li>Chưa tính bóc phong hoá, cọc, hầm, hố móng.</li>
-<li>Cao độ cân bằng chưa gồm taluy.</li>
+<li>Đáy hố là mặt phẳng, chưa có hố giật cấp. Các hố chồng nhau sẽ tính trùng.</li>
+<li>Taluy một mái liên tục, chưa có cơ.</li>
+<li>Cọc chỉ tính đất khoan của cọc tròn, không trừ phần cọc nằm trong hố móng.</li>
 </ul>
 <p>Xem sheet Kiểm tra trong file Excel và tự rà lại số liệu trước khi dùng. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.</p>
 </main>
 <footer>Hoàng HH. Báo lỗi hoặc góp ý tại <a href="https://github.com/huyhoang31897-stack/SanNenPro/issues">GitHub Issues</a>. Mã nguồn <a href="https://github.com/huyhoang31897-stack/SanNenPro">trên GitHub</a>, giấy phép MIT. Hình và video dùng khu đất giả lập.</footer>
+<script>
+document.getElementById("copy").onclick=function(){var b=this;navigator.clipboard.writeText(document.getElementById("prompt").textContent).then(function(){b.textContent="Đã sao chép";setTimeout(function(){b.textContent="Sao chép"},1500)})}
+</script>
 </body>
 </html>

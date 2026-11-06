@@ -42,7 +42,7 @@ def gui(files, auto=False):
 
     root = tk.Tk()
     root.title(f"SanNenPro {sn.__version__}: tính khối lượng san nền")
-    root.geometry("900x720")
+    root.geometry("920x800")
     root.minsize(820, 640)
     st = ttk.Style()
     if "vista" in st.theme_names():
@@ -90,6 +90,9 @@ def gui(files, auto=False):
     rows = [("td", "Cao độ thiết kế (m), trống = đọc layer", ""), ("step", "Bước lưới (m)", "5"),
             ("rot", "Góc lưới (độ), trống = theo ranh", ""), ("k", "Hệ số K", "1"),
             ("taluy_cut", "Mái đào 1:m, trống = không tính", ""), ("taluy_fill", "Mái đắp 1:m, trống = không tính", ""),
+            ("strip", "Bóc phong hoá dày (m)", ""), ("pit_slope", "Mái hố móng 1:m, trống = thành đứng", ""),
+            ("pit_bottom", "Cao độ đáy hố nếu bản vẽ không ghi", ""),
+            ("pile_len", "Dài cọc khoan nhồi (m)", ""), ("pile_dia", "D cọc nếu tim cọc là block (m)", ""),
             ("project", "Tên dự án", "")]
     for i, (k, t, v) in enumerate(rows):
         ttk.Label(fp, text=t).grid(row=i, column=0, sticky="w", pady=1)
@@ -102,17 +105,18 @@ def gui(files, auto=False):
     fl.columnconfigure(1, weight=1)
     C = {}
     for i, (k, t) in enumerate((("layer_pts", "Cao độ tự nhiên"), ("layer_tk", "Cao độ thiết kế"),
-                                ("layer_bdy", "Ranh giới"), ("layer_brk", "Đường gãy"))):
+                                ("layer_bdy", "Ranh giới"), ("layer_brk", "Đường gãy"), ("layer_noslope", "Cạnh không taluy"),
+                                ("layer_pit", "Hố móng"), ("layer_pile", "Cọc"))):
         ttk.Label(fl, text=t).grid(row=i, column=0, sticky="w", pady=1)
         C[k] = ttk.Combobox(fl, values=[AUTO])
         C[k].set(AUTO)
         C[k].grid(row=i, column=1, sticky="ew", padx=(6, 0))
     fix = tk.BooleanVar(value=True)
     hml = tk.BooleanVar(value=False)
-    ttk.Checkbutton(fl, text="Tự sửa chồng lấn, khe hở ranh giới", variable=fix).grid(row=4, column=0, columnspan=2, sticky="w")
-    ttk.Checkbutton(fl, text="Đối chiếu lưới và nhãn HML trong bản vẽ", variable=hml).grid(row=5, column=0, columnspan=2, sticky="w")
+    ttk.Checkbutton(fl, text="Tự sửa chồng lấn, khe hở ranh giới", variable=fix).grid(row=7, column=0, columnspan=2, sticky="w")
+    ttk.Checkbutton(fl, text="Đối chiếu lưới và nhãn HML trong bản vẽ", variable=hml).grid(row=8, column=0, columnspan=2, sticky="w")
     read_btn = ttk.Button(fl, text="Đọc danh sách layer")
-    read_btn.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+    read_btn.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 
     # chạy
     fr = ttk.Frame(body)
@@ -151,8 +155,10 @@ def gui(files, auto=False):
 
     def config():
         cfg = dict(sn.DEFAULTS)
-        for k in ("td", "rot", "taluy_cut", "taluy_fill"):
+        for k in ("td", "rot", "taluy_cut", "taluy_fill", "pit_bottom", "pile_len", "pile_dia"):
             cfg[k] = num(k)
+        cfg["strip"] = num("strip") or 0.0
+        cfg["pit_slope"] = num("pit_slope") or 0.0
         cfg["step"] = num("step") or 5.0
         cfg["k"] = num("k") or 1.0
         cfg["project"] = V["project"].get().strip()
@@ -207,8 +213,8 @@ def gui(files, auto=False):
         q.put("Đang đọc bản vẽ, file nặng có thể mất vài phút...")
 
         def job():
-            num_l, closed, lines = sn.list_layers(ps)
-            q.put(("layers", num_l, closed, lines))
+            num_l, closed, lines, pile = sn.list_layers(ps)
+            q.put(("layers", num_l, closed, lines, pile))
             q.put(f"Đọc xong: {len(num_l)} layer có cao độ, {len(closed)} layer có polyline kín.")
         worker(job)
 
@@ -237,6 +243,9 @@ def gui(files, auto=False):
                     C["layer_tk"].configure(values=a + m[1])
                     C["layer_bdy"].configure(values=a + m[2])
                     C["layer_brk"].configure(values=a + m[3])
+                    C["layer_noslope"].configure(values=a + m[3])
+                    C["layer_pit"].configure(values=a + m[2])
+                    C["layer_pile"].configure(values=a + m[4])
                 else:
                     write(m)
         except queue.Empty:
