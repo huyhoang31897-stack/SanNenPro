@@ -1,0 +1,162 @@
+{
+  "version": "2.4",
+  "inputs": [
+    "C:\\SanNenDemo\\Khu dat mau day du.dxf"
+  ],
+  "output_dir": "C:\\SanNenDemo\\exe24",
+  "layers": [
+    {
+      "pts": "CAO DO HIEN TRANG",
+      "tk": null,
+      "bdy": "RANH KHU DAT",
+      "brk": null,
+      "pit": "HO MONG",
+      "pile": "COC",
+      "noslope": "TUONG CHAN"
+    }
+  ],
+  "params": {
+    "td": -0.6,
+    "step": 5.0,
+    "rot": null,
+    "k": 1.0,
+    "strip": 0.2,
+    "taluy_cut": 1.0,
+    "taluy_fill": 1.5,
+    "pit_slope": 0.5,
+    "pile_len": 20.0,
+    "pile_dia": null
+  },
+  "zones": [
+    {
+      "name": "KV-01",
+      "design": "-0.600",
+      "cells": 352,
+      "area_m2": 8800.0,
+      "fill_grid_m3": 12411.62,
+      "cut_grid_m3": 64.69,
+      "fill_tin_m3": 12419.95,
+      "cut_tin_m3": 66.7
+    },
+    {
+      "name": "KV-02",
+      "design": "-0.600",
+      "cells": 352,
+      "area_m2": 8800.0,
+      "fill_grid_m3": 3110.28,
+      "cut_grid_m3": 1327.08,
+      "fill_tin_m3": 3111.47,
+      "cut_tin_m3": 1331.81
+    },
+    {
+      "name": "KV-03",
+      "design": "-0.600",
+      "cells": 352,
+      "area_m2": 8800.0,
+      "fill_grid_m3": 0.0,
+      "cut_grid_m3": 9159.12,
+      "fill_tin_m3": 0.0,
+      "cut_tin_m3": 9165.08
+    }
+  ],
+  "totals": {
+    "area_m2": 26400.0,
+    "fill_grid_m3": 15521.9,
+    "cut_grid_m3": 10550.9,
+    "fill_tin_m3": 15531.42,
+    "cut_tin_m3": 10563.6,
+    "strip_m3": 5280.0,
+    "slope_fill_m3": 246.0,
+    "slope_cut_m3": 123.21,
+    "pit_m3": 2412.66,
+    "pile_m3": 201.06,
+    "surplus_tin_m3": -2476.9
+  },
+  "pits": [
+    {
+      "name": "HM-01",
+      "area_m2": 750.0,
+      "bottom": -3.5,
+      "volume_m3": 2412.66
+    }
+  ],
+  "piles": [
+    {
+      "diameter": 0.8,
+      "count": 20,
+      "length": 20.0,
+      "volume_m3": 201.06
+    }
+  ],
+  "balance": {
+    "level_inside": -0.788,
+    "level_all_items": -0.692
+  },
+  "warnings": [
+    "KV-01: 25 ô có tâm cách điểm đo gần nhất trên 7.5 m: A-7, A-13, C-2, C-3, D-2, D-3, D-14, D-15, D-19, E-19, E-20, I-22",
+    "KV-02: 19 ô có tâm cách điểm đo gần nhất trên 7.5 m: A-7, B-4, E-7, F-8, H-1, H-14, H-15, H-16, I-1, I-7, J-7, K-2",
+    "KV-03: 22 ô có tâm cách điểm đo gần nhất trên 7.5 m: A-7, B-7, C-2, C-7, C-8, C-9, C-22, J-8, K-8, K-14, K-15, K-20"
+  ],
+  "errors": [],
+  "fixed": [],
+  "files": [
+    "C:\\SanNenDemo\\exe24\\SanNen_3D.dwg",
+    "C:\\SanNenDemo\\exe24\\SanNen_3D.html",
+    "C:\\SanNenDemo\\exe24\\SanNen_3D.ifc",
+    "C:\\SanNenDemo\\exe24\\SanNen_BaoCao.pdf",
+    "C:\\SanNenDemo\\exe24\\SanNen_KhoiLuong.xlsx",
+    "C:\\SanNenDemo\\exe24\\SanNen_MatBang.dwg",
+    "C:\\SanNenDemo\\exe24\\SanNen_MatBang.dxf",
+    "C:\\SanNenDemo\\exe24\\SanNen_TIN.xml"
+  ],
+  "check_3d": {
+    "mesh": {
+      "SN3D_DAP": {
+        "mesh": 15531.42,
+        "table": 15531.42
+      },
+      "SN3D_DAO": {
+        "mesh": 10563.6,
+        "table": 10563.6
+      },
+      "SN3D_BOC": {
+        "mesh": 5280.0,
+        "table": 5280.0
+      },
+      "SN3D_HO_MONG": {
+        "mesh": 2414.4,
+        "table": 2412.66
+      }
+    },
+    "solid": {
+      "mesh_left": 0,
+      "layers": {
+        "SN3D_BOC": {
+          "solid": 5280.0,
+          "n": 3,
+          "table": 5280.0
+        },
+        "SN3D_COC": {
+          "solid": 201.06,
+          "n": 20,
+          "table": 201.06
+        },
+        "SN3D_DAO": {
+          "solid": 10563.6,
+          "n": 3,
+          "table": 10563.6
+        },
+        "SN3D_DAP": {
+          "solid": 15531.42,
+          "n": 2,
+          "table": 15531.42
+        },
+        "SN3D_HO_MONG": {
+          "solid": 2414.4,
+          "n": 1,
+          "table": 2412.66
+        }
+      }
+    }
+  }
+}

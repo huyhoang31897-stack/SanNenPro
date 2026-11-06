@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+venv/
+dist/
+build/
+*_SANNEN/
+*.dwg
+*.dxf
+*.bak
+!mau/*.dxf
+!mau/*.dwg
+build/
+*.spec

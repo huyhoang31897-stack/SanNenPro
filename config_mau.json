@@ -1,0 +1,17 @@
+{
+  "project": "Ten du an",
+  "layer_pts": "TL-CDTN",
+  "layer_tk": "TL-CDTK",
+  "layer_bdy": "TL-Ranhgioi",
+  "layer_brk": "TL-Breakline",
+  "step": 5,
+  "rot": null,
+  "k": 1.0,
+  "taluy_cut": 1.0,
+  "taluy_fill": 1.5,
+  "min_cell": 0.25,
+  "zones": {
+    "KV-01": {"td": 2.50},
+    "KV-02": {"plane": {"x0": 1000.0, "y0": 2000.0, "z0": 2.50, "ix": 0.002, "iy": 0.0}}
+  }
+}

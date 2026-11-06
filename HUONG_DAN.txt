@@ -1,0 +1,67 @@
+SANNENPRO 2.4: TÍNH KHỐI LƯỢNG SAN NỀN
+
+CÀI ĐẶT
+- Giải nén, giữ nguyên thư mục SanNenPro. Không cần cài Python.
+- Đọc file DWG cần máy có AutoCAD. Không có thì lưu bản vẽ sang DXF.
+
+THỬ NHANH
+- Thư mục Mau có sẵn file "Khu dat mau.dxf". Chọn file này, nhập cao độ thiết kế -0.6 rồi bấm CHẠY.
+
+CHUẨN BỊ BẢN VẼ
+- Cao độ tự nhiên: TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ.
+- Ranh giới: polyline kín, mỗi khu một polyline.
+- Cao độ thiết kế: nhập tay, hoặc TEXT trên layer riêng.
+- Đường gãy, nếu có: line hoặc polyline, tên layer có chữ "break" hoặc "duong gay".
+  Line có Z thì lấy Z đó; Z = 0 thì lấy cao độ từ mặt đất.
+- Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm "Đọc danh sách layer" và chọn lại.
+
+SỬ DỤNG
+1. Mở SanNenPro.exe, bấm Thêm để chọn bản vẽ.
+2. Nhập cao độ thiết kế, bước lưới, hệ số K.
+3. Có taluy thì nhập hệ số mái đào, mái đắp (ví dụ 1 và 1.5). Để trống là không tính.
+4. Bấm CHẠY, xong bấm Mở kết quả.
+
+XUẤT 3D
+- Tick "Xuất 3D" (mặc định đã bật). Kết quả có thêm:
+  SanNen_3D.dwg: mô hình khối solid trong AutoCAD. Nền sau san màu xám, khối đắp xanh, khối đào đỏ, bóc phong hoá nâu
+  (layer SN3D_BOC tắt sẵn), hố móng, cọc. Bên phải là hình tách khối có ghi khối lượng. Chọn khối, gõ MASSPROP
+  để xem thể tích, khớp với bảng Excel.
+  SanNen_3D.html: mở bằng trình duyệt, xoay, xem màu đào đắp, kéo thanh cao độ để thử cao độ san, bấm "Cân bằng",
+  làm mặt cắt, bấm vào ô để xem khối lượng.
+  SanNen_3D.ifc: mở bằng Navisworks (Open hoặc Append) để kiểm tra va chạm với mô hình khác; Revit dùng Link IFC.
+  SanNen_TIN.xml: LandXML cho Civil 3D.
+
+DÙNG TRONG AUTOCAD
+1. Mở SanNenPro.exe một lần.
+2. Trong AutoCAD gõ APPLOAD, chọn sannen.lsp (thêm vào Startup Suite để tự nạp).
+3. Gõ SANNEN để mở chương trình với bản vẽ đang mở.
+4. Tính xong gõ SANNENKQ để chèn mặt bằng kết quả đúng tọa độ, SANNEN3D để chèn mô hình 3D.
+
+KẾT QUẢ
+- SanNen_KhoiLuong.xlsx: bảng từng khu, tổng hợp, cân đối đất, cân bằng, taluy, kiểm tra.
+- SanNen_MatBang.dwg và .dxf: lưới, cao độ nút, đào đắp từng ô, đường 0, chân taluy, bảng tổng hợp.
+- SanNen_BaoCao.pdf: bản đồ đào đắp, tổng hợp, đường cong cân bằng, cảnh báo.
+File gốc không bị sửa.
+
+CÁCH TÍNH
+- Lưới ô: V = S x trung bình |h| các đỉnh ô, tách theo đường h = 0.
+- TIN: cắt tam giác theo ô và tích phân; đường gãy được ép thành cạnh tam giác.
+- Taluy: mái 1:m từ mép ranh giới đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m.
+- Nhiều khu: phần chồng lấn tính cho khu đứng trước, khe hở nhập vào khu kề.
+
+HẠNG MỤC BỔ SUNG
+- Bóc phong hoá: nhập chiều dày, khối lượng tính riêng và không dùng lại để đắp.
+- Hố móng, tầng hầm: polyline kín trên layer TL-HoMong (hoặc tên có chữ "ho mong", "ham"),
+  ghi TEXT cao độ đáy bên trong. Nhập hệ số mái, để trống là thành đứng.
+- Cọc khoan nhồi: CIRCLE đúng đường kính trên layer TL-Coc (hoặc tên có chữ "coc"). Nhập chiều dài.
+- Cạnh không làm taluy: vẽ line dọc cạnh đó trên layer TL-KhongTaluy (hoặc tên có chữ "tuong chan").
+- Cao độ cân bằng tính cả taluy, hố móng, cọc.
+- File "Khu dat mau day du.dxf" có sẵn đủ các hạng mục này.
+
+CHƯA LÀM ĐƯỢC
+- Đáy hố là mặt phẳng, chưa có hố giật cấp. Các hố chồng nhau sẽ tính trùng.
+- Taluy một mái liên tục, chưa có cơ. Khác hệ số mái theo khu khai báo trong file cấu hình.
+- Cọc chỉ tính đất khoan của cọc tròn, không trừ thể tích cọc nằm trong hố móng.
+Xem sheet Kiểm tra trong file Excel và tự rà lại số liệu trước khi dùng.
+
+Báo lỗi: https://github.com/huyhoang31897-stack/SanNenPro/issues
