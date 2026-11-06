@@ -3,13 +3,14 @@
   "inputs": [
     "C:\\SanNenDemo\\Khu dat mau day du.dxf"
   ],
-  "output_dir": "C:\\SanNenDemo\\exe24",
+  "output_dir": "C:\\SanNenDemo\\mau27",
   "layers": [
     {
       "pts": "CAO DO HIEN TRANG",
       "tk": null,
       "bdy": "RANH KHU DAT",
       "brk": null,
+      "cnt": null,
       "pit": "HO MONG",
       "pile": "COC",
       "noslope": "TUONG CHAN"
@@ -89,6 +90,7 @@
     }
   ],
   "balance": {
+    "mode": "level",
     "level_inside": -0.788,
     "level_all_items": -0.692
   },
@@ -100,14 +102,14 @@
   "errors": [],
   "fixed": [],
   "files": [
-    "C:\\SanNenDemo\\exe24\\SanNen_3D.dwg",
-    "C:\\SanNenDemo\\exe24\\SanNen_3D.html",
-    "C:\\SanNenDemo\\exe24\\SanNen_3D.ifc",
-    "C:\\SanNenDemo\\exe24\\SanNen_BaoCao.pdf",
-    "C:\\SanNenDemo\\exe24\\SanNen_KhoiLuong.xlsx",
-    "C:\\SanNenDemo\\exe24\\SanNen_MatBang.dwg",
-    "C:\\SanNenDemo\\exe24\\SanNen_MatBang.dxf",
-    "C:\\SanNenDemo\\exe24\\SanNen_TIN.xml"
+    "C:\\SanNenDemo\\mau27\\SanNen_3D.dwg",
+    "C:\\SanNenDemo\\mau27\\SanNen_3D.html",
+    "C:\\SanNenDemo\\mau27\\SanNen_3D.ifc",
+    "C:\\SanNenDemo\\mau27\\SanNen_BaoCao.pdf",
+    "C:\\SanNenDemo\\mau27\\SanNen_KhoiLuong.xlsx",
+    "C:\\SanNenDemo\\mau27\\SanNen_MatBang.dwg",
+    "C:\\SanNenDemo\\mau27\\SanNen_MatBang.dxf",
+    "C:\\SanNenDemo\\mau27\\SanNen_TIN.xml"
   ],
   "check_3d": {
     "mesh": {
@@ -143,12 +145,12 @@
         },
         "SN3D_DAO": {
           "solid": 10563.6,
-          "n": 3,
+          "n": 10,
           "table": 10563.6
         },
         "SN3D_DAP": {
           "solid": 15531.42,
-          "n": 2,
+          "n": 10,
           "table": 15531.42
         },
         "SN3D_HO_MONG": {
