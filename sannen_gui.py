@@ -116,7 +116,7 @@ def gui(files, auto=False):
     x3d = tk.BooleanVar(value=True)
     ttk.Checkbutton(fl, text="Tự sửa chồng lấn, khe hở ranh giới", variable=fix).grid(row=7, column=0, columnspan=2, sticky="w")
     ttk.Checkbutton(fl, text="Đối chiếu lưới và nhãn HML trong bản vẽ", variable=hml).grid(row=8, column=0, columnspan=2, sticky="w")
-    ttk.Checkbutton(fl, text="Xuất 3D: HTML, IFC cho Navisworks, LandXML cho Civil 3D", variable=x3d).grid(row=10, column=0, columnspan=2, sticky="w")
+    ttk.Checkbutton(fl, text="Xuất 3D: AutoCAD, Navisworks, Civil 3D, trình duyệt", variable=x3d).grid(row=10, column=0, columnspan=2, sticky="w")
     read_btn = ttk.Button(fl, text="Đọc danh sách layer")
     read_btn.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 

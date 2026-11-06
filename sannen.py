@@ -51,7 +51,7 @@ from shapely import affinity
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
-__version__ = "2.3"
+__version__ = "2.4"
 
 DEFAULTS = {
     "layer_pts": "TL-CDTN",      # cao độ tự nhiên
@@ -72,7 +72,7 @@ DEFAULTS = {
     "layer_pile": "TL-Coc",    # cọc khoan nhồi (CIRCLE hoặc block)
     "pile_len": None,     # chiều dài cọc (m)
     "pile_dia": None,     # đường kính cọc nếu tim cọc là block (m)
-    "export_3d": False,   # xuất SanNen_3D.html, SanNen_3D.ifc, SanNen_TIN.xml
+    "export_3d": False,   # xuất SanNen_3D.dwg, SanNen_3D.html, SanNen_3D.ifc, SanNen_TIN.xml
     "taluy_max": 30.0,    # bề rộng mái tối đa (m)
     "step": 5.0,          # bước lưới (m)
     "rot": None,          # góc lưới (độ); None = theo cạnh dài ranh giới
@@ -1904,8 +1904,15 @@ def run(inputs, cfg, out=None, no_dwg=False):
         log("  DWG: " + (d.name if d else "bỏ qua, dùng file DXF"))
     if cfg["export_3d"]:
         import sannen3d
-        f3 = sannen3d.export(out, zones, tin, T, X, cfg, bal)
+        log("  Đang dựng khối 3D" + (" và đổi sang solid trong AutoCAD" if find_accore() else ""))
+        f3, chk3 = sannen3d.export(out, zones, tin, T, X, cfg, bal)
         log("  3D: " + ", ".join(p.name for p in f3))
+        if chk3.get("solid"):
+            for k, v in chk3["solid"]["layers"].items():
+                d = v["solid"] - v["table"]
+                log(f"    Solid {k}: {v['solid']:,.2f} m3, bảng tính {v['table']:,.2f} m3" + ("" if abs(d) <= max(0.05, 0.001 * v["table"]) else f", chênh {d:+,.2f}"))
+            if chk3["solid"]["mesh_left"]:
+                log(f"    [CẢNH BÁO] {chk3['solid']['mesh_left']} khối chưa đổi được sang solid, vẫn để dạng mesh")
 
     S = lambda k: sum(z[k] for z in zones)
     log(f"\nKẾT QUẢ\n  Lưới ô: đắp {S('vf'):,.2f} | đào {S('vc'):,.2f} m3\n  TIN   : đắp {S('tvf'):,.2f} | đào {S('tvc'):,.2f} m3")
@@ -1916,6 +1923,8 @@ def run(inputs, cfg, out=None, no_dwg=False):
     log(f"  Cao độ cân bằng (K={cfg['k']}): {bal[0]:.3f} m trong ranh, {bal[2]:.3f} m gồm mọi hạng mục\n  Thư mục: {out}")
     files = sorted(p for p in out.iterdir() if p.name.startswith("SanNen_"))
     res = summary(zones, T, X, bal, cfg, Q, inputs, out, files, [s.layers for s in sources])
+    if cfg["export_3d"]:
+        res["check_3d"] = chk3
     (out / "SanNen_KetQua.json").write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
     return dict(zones=zones, Q=Q, bal=bal, T=T, X=X, out=out, tin=tin, summary=res)
 
@@ -1937,7 +1946,7 @@ def main(argv=None):
     ap.add_argument("--d-coc", type=float, dest="pile_dia", help="đường kính cọc khi tim cọc là block (m)")
     ap.add_argument("--layer", action="append", default=[], metavar="LOAI=TEN",
                     help="chỉ định layer: pts, tk, bdy, brk, pit, pile, noslope; lặp lại được")
-    ap.add_argument("--3d", action="store_true", dest="export_3d", help="xuất mô hình 3D: HTML, IFC (Navisworks, Revit), LandXML (Civil 3D)")
+    ap.add_argument("--3d", action="store_true", dest="export_3d", help="xuất mô hình 3D: DWG solid cho AutoCAD, HTML, IFC (Navisworks, Revit), LandXML (Civil 3D)")
     ap.add_argument("--list-layers", action="store_true", help="in JSON các layer và layer tự nhận, không tính")
     ap.add_argument("--json", action="store_true", help="in JSON kết quả ra stdout, nhật ký chuyển sang stderr")
     ap.add_argument("--use-grid", action="store_true", help="dùng lại lưới TL-Luoi có sẵn để đối chiếu HML")

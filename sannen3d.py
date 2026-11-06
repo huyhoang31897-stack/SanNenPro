@@ -379,8 +379,8 @@ def viewer_template():
 # ---------------------------------------------------------------- DWG 3D cho AutoCAD
 LAYERS_3D = {   # layer: (màu RGB, mô tả)
     "SN3D_NEN": ((175, 175, 175), "Nền đất sau san"),
-    "SN3D_DAO": ((235, 135, 35), "Khối đào"),
-    "SN3D_DAP": ((205, 35, 35), "Khối đắp"),
+    "SN3D_DAO": ((190, 45, 55), "Khối đào"),
+    "SN3D_DAP": ((35, 145, 70), "Khối đắp"),
     "SN3D_BOC": ((140, 100, 60), "Lớp bóc phong hoá"),
     "SN3D_TALUY": ((200, 180, 120), "Mái taluy"),
     "SN3D_HO_MONG": ((60, 125, 215), "Hố móng"),
@@ -629,7 +629,8 @@ def write_dwg3d(out, zones, tin_tris, T, X, cfg, origin):
 
 # ---------------------------------------------------------------- xuất tất cả
 def export(out, zones, tin, T, X, cfg, bal, ear_clip=None):
-    """Tạo SanNen_3D.html, SanNen_3D.ifc, SanNen_TIN.xml, trả về danh sách file."""
+    """Tạo SanNen_3D.dwg (hoặc .dxf), SanNen_3D.html, SanNen_3D.ifc, SanNen_TIN.xml.
+    Trả về (danh sách file, kiểm tra thể tích khối 3D so với bảng tính)."""
     out = Path(out)
     V, Z = tin.triangles()
     Z = Z - cfg["strip"]
@@ -654,5 +655,4 @@ def export(out, zones, tin, T, X, cfg, bal, ear_clip=None):
     surf.append(("Thiet ke",) + surface_mesh(np.concatenate(dx), np.concatenate(dz)))
     write_landxml(l, surf, cfg)
     d, chk = write_dwg3d(out, zones, tin_tris, T, X, cfg, origin)
-    (out / "SanNen_3D_KiemTra.json").write_text(json.dumps(chk, ensure_ascii=False, indent=1), encoding="utf-8")
-    return [d, h, i, l]
+    return [d, h, i, l], chk
