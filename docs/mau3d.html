@@ -20,6 +20,7 @@ button.off{background:#fff}#hide{position:absolute;right:6px;top:6px;margin:0;pa
 #hint{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#ffe600;color:#16191d;padding:6px 12px;font-weight:700;display:none}
 #open{position:fixed;left:12px;top:12px;display:none;margin:0}
 .leg{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1px}
+.bar{height:8px;margin-top:4px}.bt{display:flex;justify-content:space-between;font-size:12px}
 #labs{position:fixed;bottom:16px;transform:translateX(-50%);display:none;font-weight:700;white-space:nowrap;pointer-events:none;border:2px solid #fff;background:#212830ee;padding:6px 12px}#labs span{margin:0 8px}
 @media (max-width:760px){#labs{white-space:normal;width:calc(100% - 24px);text-align:center}#labs span{display:inline-block}}
 @media (max-width:760px){#panel{width:calc(100% - 24px);max-height:48%}#sec{left:12px;height:190px}#info{top:auto;bottom:12px;right:12px}}
@@ -31,13 +32,15 @@ button.off{background:#fff}#hide{position:absolute;right:6px;top:6px;margin:0;pa
 <input id="off" type="range" min="-3" max="3" step="0.01" value="0">
 <button id="reset" class="off">Về thiết kế</button><button id="bal">Cân bằng</button></div>
 <div class="row"><table>
-<tr><td><span class="leg" style="background:#1f7a3d"></span>Đắp trong ranh</td><td id="vf"></td></tr>
-<tr><td><span class="leg" style="background:#b32d3a"></span>Đào trong ranh</td><td id="vc"></td></tr>
+<tr><td><span class="leg" style="background:linear-gradient(90deg,#cceacc,#0d6629)"></span>Đắp trong ranh</td><td id="vf"></td></tr>
+<tr><td><span class="leg" style="background:linear-gradient(90deg,#fad1cc,#8c0d1a)"></span>Đào trong ranh</td><td id="vc"></td></tr>
+<tr><td colspan="2" style="font-weight:400;font-size:13px;text-align:left"><div class="bar" style="background:linear-gradient(90deg,#cceacc,#0d6629)"></div><div class="bt"><span>0</span><span id="hf"></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#fad1cc,#8c0d1a)"></div><div class="bt"><span>0</span><span id="hc"></span></div>Màu nhạt chỗ mỏng, đậm dần chỗ dày</td></tr>
 <tr><td id="exl">Taluy, hố móng, cọc</td><td id="ex"></td></tr>
 <tr><td>Thừa (+) / thiếu (-)</td><td id="sur"></td></tr>
 <tr><td>Hệ số K</td><td><input id="k" type="number" step="0.01" style="width:64px"></td></tr></table></div>
-<div class="row"><label class="t"><input type="checkbox" id="lg" checked>Mặt đất xung quanh</label>
-<label class="t"><input type="checkbox" id="ld" checked><span class="leg" style="background:#24914a"></span><span class="leg" style="background:#be2d37"></span>Khối đắp, khối đào</label>
+<div class="row"><label class="t"><input type="checkbox" id="lg">Mặt đất xung quanh</label>
+<label class="t"><input type="checkbox" id="ld" checked><span class="leg" style="background:#0d6629"></span><span class="leg" style="background:#8c0d1a"></span>Khối đắp, khối đào</label>
 <label class="t"><input type="checkbox" id="ln" checked><span class="leg" style="background:#9b9b9b"></span>Khối nền sau san</label>
 <label class="t"><input type="checkbox" id="lc">Lưới ô</label>
 <label class="t" id="lt0"><input type="checkbox" id="lt" checked>Mái taluy</label>
@@ -90,25 +93,32 @@ for(let j=0;j<3;j++){const p=i*3+o[j],q=i*3+o[(j+1)%3],kp=x[p*2].toFixed(3)+","+
 for(const v of em.values())if(v)bE.push(v)}
 let zgmin=1e9,zdmin=1e9;for(let i=0;i<N*3;i++){zgmin=Math.min(zgmin,site.zg[i]);zdmin=Math.min(zdmin,site.zd[i])}
 const ZB=Math.floor(Math.min(zgmin,zdmin-3)-2);
-const CF=[.14,.57,.29],CC=[.75,.18,.22],CN=[.62,.62,.62];
+const CN=[.62,.62,.62];
+// màu theo bề dày: mỏng thì nhạt, dày thì đậm; thang lấy theo 95% bề dày lớn nhất của từng loại
+const LF=[.80,.92,.80],DF=[.05,.40,.16],LC=[.98,.82,.80],DC=[.55,.05,.10];
+const HS=(()=>{const f=[],c=[];for(let i=0;i<N*3;i++){const h=site.zd[i]-site.zg[i];if(h>1e-6)f.push(h);else if(h<-1e-6)c.push(-h)}
+const q=a=>{if(!a.length)return 1;a.sort((x,y)=>x-y);return Math.max(a[Math.floor(a.length*.95)],.05)};return[q(f),q(c)]})();
+const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const colF=h=>mix(LF,DF,Math.min(Math.max(h,0)/HS[0],1)),colC=h=>mix(LC,DC,Math.min(Math.max(-h,0)/HS[1],1));
+const CF=colF(HS[0]),CC=colC(-HS[1]);
 let xpl=0;const SB={pos:[],col:[]},LB=[];
 function liftZ(){return xpl?span*.16/Ez:0}
 function buildSolid(d){const P2=[],C2=[],Ls=[],lf=liftZ();
 const put=(p,c)=>{P2.push(p[0],p[1],p[2]);C2.push(c[0],c[1],c[2])};
-const fan=(poly,zf,c,rev)=>{for(let k=1;k<poly.length-1;k++){const a=poly[0],b=poly[k],e=poly[k+1];if(rev){put([a[0],a[1],zf(a)],c);put([e[0],e[1],zf(e)],c);put([b[0],b[1],zf(b)],c)}else{put([a[0],a[1],zf(a)],c);put([b[0],b[1],zf(b)],c);put([e[0],e[1],zf(e)],c)}}};
-const quad=(a,b,za0,zb0,za1,zb1,c)=>{put([a[0],a[1],za0],c);put([b[0],b[1],zb0],c);put([b[0],b[1],zb1],c);put([a[0],a[1],za0],c);put([b[0],b[1],zb1],c);put([a[0],a[1],za1],c)};
+const fan=(poly,zf,c,rev)=>{const C=typeof c=="function"?c:()=>c;for(let k=1;k<poly.length-1;k++){const a=poly[0],b=poly[k],e=poly[k+1];if(rev){put([a[0],a[1],zf(a)],C(a));put([e[0],e[1],zf(e)],C(e));put([b[0],b[1],zf(b)],C(b))}else{put([a[0],a[1],zf(a)],C(a));put([b[0],b[1],zf(b)],C(b));put([e[0],e[1],zf(e)],C(e))}}};
+const quad=(a,b,za0,zb0,za1,zb1,c,cb)=>{cb=cb||c;put([a[0],a[1],za0],c);put([b[0],b[1],zb0],cb);put([b[0],b[1],zb1],cb);put([a[0],a[1],za0],c);put([b[0],b[1],zb1],cb);put([a[0],a[1],za1],c)};
 const V=i=>{const g=site.zg[i],z=site.zd[i]+d;return[site.xy[i*2],site.xy[i*2+1],g,z,z-g]};
 const cut=(a,b)=>{const t=a[4]/(a[4]-b[4]);return a.map((v,k)=>k==4?0:v+t*(b[k]-v))};
 const showB=$("ld").checked,showN=$("ln").checked;
 for(let i=0;i<N;i++){const v=[0,1,2].map(j=>V(i*3+ord[i*3+j]));const pos=[],neg=[];
 for(let j=0;j<3;j++){const a=v[j],b=v[(j+1)%3];(a[4]>=0?pos:neg).push(a);if(a[4]*b[4]<0){const q=cut(a,b);pos.push(q);neg.push(q)}}
-if(showB){if(pos.length>2&&pos.some(q=>q[4]>1e-6)){fan(pos,q=>q[3]+lf,CF,0);fan(pos,q=>q[2]+lf,CF,1)}
-if(neg.length>2&&neg.some(q=>q[4]<-1e-6)){fan(neg,q=>q[2]+lf,CC,0);fan(neg,q=>q[3]+lf,CC,1)}}
+if(showB){if(pos.length>2&&pos.some(q=>q[4]>1e-6)){fan(pos,q=>q[3]+lf,q=>colF(q[4]),0);fan(pos,q=>q[2]+lf,q=>colF(q[4]),1)}
+if(neg.length>2&&neg.some(q=>q[4]<-1e-6)){fan(neg,q=>q[2]+lf,q=>colC(q[4]),0);fan(neg,q=>q[3]+lf,q=>colC(q[4]),1)}}
 if(showN&&(xpl||!showB))for(const p of[pos,neg])if(p.length>2)fan(p,q=>Math.min(q[2],q[3]),CN,0)}
 for(const[pi,qi]of bE){let a=V(pi),b=V(qi);const segs=a[4]*b[4]<0?[[a,cut(a,b)],[cut(a,b),b]]:[[a,b]];
 for(const[p,q]of segs){const s=(p[4]+q[4])>=0,mp=Math.min(p[2],p[3]),mq=Math.min(q[2],q[3]),Mp=Math.max(p[2],p[3]),Mq=Math.max(q[2],q[3]);
 if(showN){quad(p,q,ZB,ZB,mp,mq,CN);Ls.push(p[0],p[1],ZB,q[0],q[1],ZB)}
-if(showB){quad(p,q,mp+lf,mq+lf,Mp+lf,Mq+lf,s?CF:CC);Ls.push(p[0],p[1],Mp+lf,q[0],q[1],Mq+lf)}else if(showN)Ls.push(p[0],p[1],mp,q[0],q[1],mq);
+if(showB){quad(p,q,mp+lf,mq+lf,Mp+lf,Mq+lf,s?colF(p[4]):colC(p[4]),s?colF(q[4]):colC(q[4]));Ls.push(p[0],p[1],Mp+lf,q[0],q[1],Mq+lf)}else if(showN)Ls.push(p[0],p[1],mp,q[0],q[1],mq);
 if(xpl&&showN&&showB)Ls.push(p[0],p[1],mp,q[0],q[1],mq)}}
 return[new Float32Array(P2),new Float32Array(C2),new Float32Array(Ls)]}
 let sol=null,sedge=null;
@@ -155,7 +165,7 @@ const dr=(m,L,A)=>{gl.uniform1f(uL,L);gl.uniform1f(uA,A);gl.bindVertexArray(m.a)
 gl.enable(gl.CULL_FACE);if(sol)dr(sol,1,1);gl.disable(gl.CULL_FACE);if(sedge)dr(sedge,0,1);if($("lc").checked)dr(gl1,0,1);if(tal&&$("lt").checked&&off===0&&!xpl)dr(tal,1,1);if(secl)dr(secl,0,1);
 if($("lg").checked&&!xpl){if(!gnd)gnd=groundOut();dr(gnd,1,1)}labels()
 if($("lp").checked){gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);pits.forEach(m=>dr(m,1,.65));if(plm)dr(plm,0,1);gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST)}}
-function groundOut(){const v=D.ground.v,t=[];for(let i=0;i<D.ground.t.length;i+=3){const a=D.ground.t.slice(i,i+3);let x=0,y=0;for(const k of a){x+=v[k*3]/3;y+=v[k*3+1]/3}if(!find(x,y))t.push(...a)}return mesh(...expand(v,t,[.36,.40,.36]),gl.TRIANGLES)}
+function groundOut(){const v=D.ground.v,t=[];for(let i=0;i<D.ground.t.length;i+=3){const a=D.ground.t.slice(i,i+3);let x=0,y=0,inn=0;for(const k of a){x+=v[k*3]/3;y+=v[k*3+1]/3;if(find(v[k*3],v[k*3+1]))inn=1}if(!inn&&!find(x,y))t.push(...a)}return mesh(...expand(v,t,[.36,.40,.36]),gl.TRIANGLES)}
 function labels(){const L=$("labs");if(!xpl){L.style.display="none";return}const[f,cc]=stats(off);L.style.display="block";L.style.left=(padL()+(cv.clientWidth-padL())/2)+"px";
 L.innerHTML=`<span style="color:#3cc46a">KHỐI ĐẮP ${fmt(f)} m³</span><span style="color:#ff5c66">KHỐI ĐÀO ${fmt(cc)} m³</span><span style="color:#c8c8c8">Dưới: NỀN SAU SAN</span>`}
 // -- tương tác
@@ -163,7 +173,7 @@ let drag=null,moved=0,secMode=0,secA=null;const ptrs=new Map();let pinch=0;
 function ray(px,py){const c=vp(),r=cv.getBoundingClientRect(),nx=(px-r.left-padL())/(r.width-padL())*2-1,ny=1-(py-r.top)/r.height*2,d=nz([c.x[0]*nx*c.asp/c.f+c.y[0]*ny/c.f-c.z[0],c.x[1]*nx*c.asp/c.f+c.y[1]*ny/c.f-c.z[1],c.x[2]*nx*c.asp/c.f+c.y[2]*ny/c.f-c.z[2]]);return[c.e,d]}
 function hit(px,py){const[o,d]=ray(px,py);let best=null,bt=1e12;const lz=liftZ(),T=k=>(Math.max(P[k],site.zg[k/3|0])+lz-Z0)*Ez;for(let i=0;i<N;i++){const a=[P[i*9],P[i*9+1],T(i*9+2)],b=[P[i*9+3],P[i*9+4],T(i*9+5)],c=[P[i*9+6],P[i*9+7],T(i*9+8)],e1=sub(b,a),e2=sub(c,a),p=cr(d,e2),det=dt(e1,p);if(Math.abs(det)<1e-12)continue;const s=sub(o,a),u=dt(s,p)/det;if(u<0||u>1)continue;const q=cr(s,e1),v=dt(d,q)/det;if(v<0||u+v>1)continue;const t=dt(e2,q)/det;if(t>0&&t<bt){bt=t;best=i}}return best==null?null:{i:best,x:o[0]+d[0]*bt,y:o[1]+d[1]*bt}}
 function showCell(i){const c=D.cells[site.own[i]];const el=$("info");el.style.display="block";el.innerHTML=`<b>${c.k} ô ${c.n}</b><table><tr><td>Diện tích</td><td>${c.a} m²</td></tr><tr><td>V đắp lưới ô</td><td>${c.gf} m³</td></tr><tr><td>V đào lưới ô</td><td>${c.gc} m³</td></tr><tr><td>V đắp TIN</td><td>${c.vf} m³</td></tr><tr><td>V đào TIN</td><td>${c.vc} m³</td></tr></table>`}
-SN.showCell=showCell;SN.hit=hit;
+SN.showCell=showCell;SN.hit=hit;SN.view=o=>{if(o.c)cam.c=o.c;if(o.r)cam.r=cam.r*o.r;if(o.th!=null)cam.th=o.th;if(o.ph!=null)cam.ph=o.ph;draw();return JSON.parse(JSON.stringify(cam))};
 cv.addEventListener("contextmenu",e=>e.preventDefault());
 cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag={x:e.clientX,y:e.clientY,b:e.button};moved=0;pinch=0});
 cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);if(ptrs.size==2){const[a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)cam.r=Math.max(span*.04,cam.r*pinch/d);pinch=d;moved=9;draw();return}if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
@@ -190,6 +200,7 @@ g.fillStyle="#fff";g.fillRect(0,0,W,H);g.strokeStyle="#c9ced6";g.fillStyle="#161
 for(let i=0;i<n;i++){const a1=G[i],b1=G[i+1],c1=Dz[i],d1=Dz[i+1];if(a1==null||b1==null||c1==null||d1==null)continue;const up=(c1+d1)>(a1+b1);g.fillStyle=up?"#1f7a3d55":"#b32d3a55";g.beginPath();g.moveTo(px(i),py(a1));g.lineTo(px(i+1),py(b1));g.lineTo(px(i+1),py(d1));g.lineTo(px(i),py(c1));g.fill()}
 const ln=(A,col)=>{g.strokeStyle=col;g.lineWidth=2;g.beginPath();let st=0;A.forEach((v,i)=>{if(v==null){st=0;return}st?g.lineTo(px(i),py(v)):g.moveTo(px(i),py(v));st=1});g.stroke()};ln(G,"#8a5a2b");ln(Dz,"#16191d");g.fillStyle="#16191d";g.font="bold 12px Arial";g.fillText("Đen: thiết kế. Nâu: mặt đất.",ml+6,mt+12)}
 SN.section=section;
+$("hf").textContent="đắp dày "+HS[0].toFixed(2)+" m trở lên";$("hc").textContent="đào sâu "+HS[1].toFixed(2)+" m trở lên";
 D.levelBase=parseFloat(D.design[0])||0;if(!D.flat)$("lvlname").textContent="Dịch mặt thiết kế";
 if(innerWidth<760){$("panel").style.display="none";$("open").style.display="block"}
 cam=JSON.parse(JSON.stringify(home));

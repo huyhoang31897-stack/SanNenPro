@@ -1747,6 +1747,7 @@ def recalc_excel(path):
 LAYERS = {
     "SN-RanhGioi": 1, "SN-Luoi": 8, "SN-DiemDo": 9, "SN-Nut": 7, "SN-DuongKhong": 6,
     "SN-Dap": 3, "SN-Dao": 1, "SN-O": 7, "SN-Bang": 7, "SN-Taluy": 30, "SN-HoMong": 5,
+    "SN-TIN-TuNhien": 92, "SN-TIN-ThietKe": 10, "SN-DiemTK": 10,
 }
 
 
@@ -1755,7 +1756,7 @@ def text_rot(a):
     return (a + 45) % 90 - 45
 
 
-def write_dxf(path, zones, pts, cfg, K, bal, T=None, X=None):
+def write_dxf(path, zones, pts, cfg, K, bal, T=None, X=None, tin=None):
     doc = ezdxf.new("R2013", setup=False)
     doc.header["$INSUNITS"] = 6
     doc.styles.add("SN", font="arial.ttf")
@@ -1783,6 +1784,30 @@ def write_dxf(path, zones, pts, cfg, K, bal, T=None, X=None):
     for x, y, z in pts:
         msp.add_point((x, y, z), dxfattribs={"layer": "SN-DiemDo"})
         msp.add_text(f"{z:.3f}", dxfattribs={"layer": "SN-DiemDo", "style": "SN", "height": th * 0.55, "insert": (x, y)})
+    # mạng tam giác để kiểm tra bằng mắt: TIN tự nhiên và TIN thiết kế (nếu có)
+    U = unary_union([z["poly"] for z in zones]).buffer(2 * cfg["step"])
+    def tin_lines(V, Z, layer):
+        seen = set()
+        for v, zz in zip(V, Z):
+            if not U.intersects(Polygon(v)):
+                continue
+            for i in range(3):
+                a, b = (tuple(np.round(v[i], 3)), float(zz[i])), (tuple(np.round(v[(i + 1) % 3], 3)), float(zz[(i + 1) % 3]))
+                k = (a[0], b[0]) if a[0] < b[0] else (b[0], a[0])
+                if k not in seen:
+                    seen.add(k)
+                    msp.add_line((*a[0], a[1]), (*b[0], b[1]), dxfattribs={"layer": layer})
+    if tin is not None:
+        tin_lines(*tin.triangles(), "SN-TIN-TuNhien")
+    done = set()
+    for z in zones:
+        d = z["design"]
+        key = tuple(np.round(np.asarray(d.kw["pts"], float).ravel(), 3)) if d.kind == "tin" else None
+        if key and key not in done:
+            done.add(key)
+            tin_lines(*d.tin.triangles(), "SN-TIN-ThietKe")
+            for x, y, zz in d.kw["pts"]:
+                msp.add_text(f"{zz:.3f}", dxfattribs={"layer": "SN-DiemTK", "style": "SN", "height": th * 0.55, "insert": (x, y)})
 
     def hatch(p, layer, color):
         h = msp.add_hatch(color=color, dxfattribs={"layer": layer})
@@ -2050,7 +2075,7 @@ def run(inputs, cfg, out=None, no_dwg=False):
     log("4. Xuất kết quả")
     write_excel(out / "SanNen_KhoiLuong.xlsx", zones, cfg, bal, Q, cfg["k"], T, X)
     dxf = out / "SanNen_MatBang.dxf"
-    write_dxf(dxf, zones, pts, cfg, cfg["k"], bal, T, X)
+    write_dxf(dxf, zones, pts, cfg, cfg["k"], bal, T, X, tin)
     write_pdf(out / "SanNen_BaoCao.pdf", zones, cfg, cfg["k"], bal, Q, T, X)
     if not no_dwg:
         d = dxf_to_dwg(dxf)

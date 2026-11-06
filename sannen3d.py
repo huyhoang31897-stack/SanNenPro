@@ -419,12 +419,24 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
                 if tris:
                     p, q = body_mesh(tris, pinch=True)
                     if q:
-                        bodies.append((lay, zi, z["name"], sub(p), q, None))
+                        tm = float(np.mean([abs(a[2] - a[3]) for t in tris for a in t]))
+                        bodies.append((lay, zi, z["name"], sub(p), q, tm))
             if cfg["strip"] > 0:
                 tris = [[(x, y, gg + cfg["strip"], gg) for (x, y), gg in zip(pp, g3)] for pp, g3 in zip(xy, g)]
                 p, q = body_mesh(tris, pinch=True)
                 if q:
                     bodies.append(("SN3D_BOC", zi, z["name"], sub(p), q, None))
+    # màu theo bề dày: chia 5 cấp, nhạt chỗ mỏng, đậm chỗ dày; thang = 95% bề dày lớn nhất từng loại
+    scale, bandcol = {}, {}
+    for lay in ("SN3D_DAP", "SN3D_DAO"):
+        t = sorted(b[5] for b in bodies if b[0] == lay)
+        scale[lay] = max(t[int(len(t) * .95)] if t else 1.0, 0.05)
+    for i, b in enumerate(bodies):
+        if b[0] in scale:
+            band = min(int(b[5] / scale[b[0]] * 5), 4)
+            key = f"{b[1]}b{band}"
+            bandcol[(b[0], key)] = band_rgb(b[0], band)
+            bodies[i] = (b[0], key, b[2], b[3], b[4], None)
     if T and T.get("mesh") and T["mesh"]["faces"]:
         surfaces.append(("SN3D_TALUY", sub(T["mesh"]["pts"]), [tuple(f) for f in T["mesh"]["faces"]]))
     from shapely.geometry import Point
@@ -450,7 +462,14 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
     # hình tách: đắp và đào không chồng nhau trên mặt bằng nên nhấc cùng một mức
     lifts = {"SN3D_NEN": 0.0, "SN3D_DAP": lift, "SN3D_DAO": lift, "SN3D_BOC": 2 * lift}
     return dict(bodies=bodies, surfaces=surfaces, piles=piles, zbase=zbase, box=(x0, y0, x1, y1, zt), W=W,
-                dx=(x1 - x0) + 0.45 * W, lift=lift, lifts=lifts)
+                dx=(x1 - x0) + 0.45 * W, lift=lift, lifts=lifts, bandcol=bandcol, scale=scale)
+
+
+def band_rgb(lay, band):
+    """Cấp màu 0..4 từ nhạt đến đậm."""
+    lo, hi = {"SN3D_DAP": ((204, 234, 204), (13, 102, 41)), "SN3D_DAO": ((250, 209, 204), (140, 13, 26))}[lay]
+    t = (band + 0.5) / 5
+    return tuple(int(round(a + (b - a) * t)) for a, b in zip(lo, hi))
 
 
 def temp_layer(lay, key):
@@ -485,16 +504,19 @@ def write_dxf3d(path, M, zones, X, origin, shift=(0.0, 0.0), for_acad=False):
     msp = doc.modelspace()
     sx, sy = shift
 
-    def add_mesh(layer, pts, faces, dx=0.0, dz=0.0):
+    def add_mesh(layer, pts, faces, dx=0.0, dz=0.0, rgb=None):
         m = msp.add_mesh(dxfattribs={"layer": layer})
+        if rgb:
+            m.rgb = rgb
         with m.edit_data() as d:
             d.vertices = [(x + sx + dx, y + sy, z + dz) for x, y, z in pts]
             d.faces = [list(f) for f in faces]
 
     for lay, key, nm, p, q, v in M["bodies"]:
-        add_mesh(temp_layer(lay, key) if for_acad else lay, p, q)
+        rgb = M["bandcol"].get((lay, key))
+        add_mesh(temp_layer(lay, key) if for_acad else lay, p, q, rgb=rgb)
         if not for_acad and lay in M["lifts"]:
-            add_mesh(lay + "_TACH", p, q, dx=M["dx"], dz=M["lifts"][lay])
+            add_mesh(lay + "_TACH", p, q, dx=M["dx"], dz=M["lifts"][lay], rgb=rgb)
     for lay, p, q in M["surfaces"]:
         add_mesh(lay, p, q)
     if not for_acad:   # không có AutoCAD: cọc là lăng trụ 24 cạnh
@@ -528,6 +550,11 @@ def write_dxf3d(path, M, zones, X, origin, shift=(0.0, 0.0), for_acad=False):
             txt = names[k] + ("" if vals[k] is None else f"  {vals[k]:,.2f} m³")
             label(txt, x0 + dx - 0.04 * W, y0 - 0.04 * W, min(zz) + M["lifts"][k] + up * h, LAYERS_3D[k][0])
     label("HIỆN TRẠNG VÀ THIẾT KẾ", x0 - 0.04 * W, y0 - 0.04 * W, zt + 2 * h)
+    sc = M.get("scale", {})
+    if sc:
+        label("Màu nhạt chỗ mỏng, đậm dần chỗ dày: đắp " + " | ".join(f"{sc['SN3D_DAP'] * i / 5:.2f}" for i in range(6)) + " m"
+              + (", đào " + " | ".join(f"{sc['SN3D_DAO'] * i / 5:.2f}" for i in range(6)) + " m" if "SN3D_DAO" in sc else ""),
+              x0 - 0.04 * W, y0 - 0.04 * W, zt + 3.6 * h)
     label("TÁCH KHỐI", x0 + dx - 0.04 * W, y0 - 0.04 * W, zt + 2 * lift + 2 * h)
     doc.saveas(path)
     return sorted(tmp)
