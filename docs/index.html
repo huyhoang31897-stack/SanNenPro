@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SanNenPro: tính khối lượng san nền từ bản vẽ CAD</title>
+<meta name="description" content="Công cụ tính khối lượng san nền từ DWG/DXF: lưới ô + TIN, taluy, đường gãy, cân bằng đào đắp. Xuất Excel, DWG, PDF.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="SanNenPro: tính khối lượng san nền từ bản vẽ CAD">
+<meta property="og:description" content="Lưới ô + TIN, taluy, đường gãy, cân bằng đào đắp. Xuất Excel, DWG, PDF. Không cần cài Python.">
+<meta property="og:url" content="https://huyhoang31897-stack.github.io/SanNenPro/">
+<meta property="og:image" content="https://huyhoang31897-stack.github.io/SanNenPro/preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{--navy:#10264a;--ink:#1c2738;--mute:#5a6678;--line:#dfe5ee;--soft:#f4f7fb;--teal:#0f8f78;--bg:#fff}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 Inter,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header{background:var(--navy);color:#fff;padding:64px 0 72px}
+.eyebrow{color:#7fd6c2;font-weight:600;font-size:15px}
+h1{font-size:clamp(40px,8vw,64px);line-height:1.05;letter-spacing:-.02em;margin:10px 0 16px}
+.lead{font-size:clamp(18px,3vw,22px);color:#d9e7f5;max-width:640px;margin:0 0 28px}
+.btn{display:inline-block;padding:14px 22px;border-radius:8px;font-weight:700;text-decoration:none;margin:0 10px 10px 0}
+.primary{background:#7fd6c2;color:#0b2a26}.ghost{border:1px solid #ffffff55;color:#fff}
+.note{font-size:14px;color:#b9c9de;margin-top:6px}
+section{padding:52px 0;border-bottom:1px solid var(--line)}
+h2{font-size:clamp(26px,5vw,32px);letter-spacing:-.01em;line-height:1.2;margin:0 0 22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+.grid h3{font-size:18px;margin:0 0 4px}.grid p{margin:0;color:var(--mute);font-size:16px}
+figure{margin:0}img{max-width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:8px}
+figcaption{color:var(--mute);font-size:15px;margin-top:8px}
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+ol{padding-left:22px;margin:0}li{margin-bottom:8px}
+code{background:var(--soft);padding:1px 6px;border-radius:4px;font-size:.92em}
+footer{padding:30px 0;color:var(--mute);font-size:15px}a{color:#0b6b5a}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="eyebrow">Công cụ cho kỹ sư xây dựng</div>
+<h1>SanNenPro</h1>
+<p class="lead">Tính khối lượng san nền trực tiếp từ bản vẽ CAD, xuất sẵn Excel, DWG và PDF.</p>
+<a class="btn primary" href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip">Tải cho Windows (99 MB)</a>
+<a class="btn ghost" href="https://github.com/huyhoang31897-stack/SanNenPro">Xem trên GitHub</a>
+<div class="note">Không cần cài Python. Đọc DWG cần máy có AutoCAD, không có thì lưu sang DXF.</div>
+</div></header>
+<main>
+<section><div class="wrap"><h2>Làm được gì</h2><div class="grid">
+<div><h3>Hai cách tính song song</h3><p>Lưới ô theo cách quen dùng và mô hình TIN chính xác, để đối chiếu ngay.</p></div>
+<div><h3>Taluy và đường gãy</h3><p>Nhập hệ số mái đào, đắp. TIN ép theo mép mương, bờ taluy.</p></div>
+<div><h3>Cân bằng đào đắp</h3><p>Tìm cao độ san phẳng cân bằng, đường cong khối lượng, cân đối đất theo hệ số K.</p></div>
+<div><h3>Tự xử lý ranh giới</h3><p>Nhiều khu, cắt phần chồng lấn, lấp khe hở, ranh giới hình bất kỳ.</p></div>
+<div><h3>Tự kiểm tra số liệu</h3><p>Điểm trùng, điểm dị thường, ô thiếu điểm đo, chênh lệch giữa hai cách tính.</p></div>
+<div><h3>Dùng trong AutoCAD</h3><p>Lệnh <code>SANNEN</code> mở tool, <code>SANNENKQ</code> chèn kết quả đúng tọa độ.</p></div>
+</div></div></section>
+<section><div class="wrap"><h2>Hình ảnh</h2><div class="shots">
+<figure><img src="bando.png" alt="Bản đồ chiều cao đào đắp theo ô" width="1520" height="1000" loading="lazy"><figcaption>Bản đồ đào đắp</figcaption></figure>
+<figure><img src="giaodien.png" alt="Giao diện SanNenPro" width="916" height="759" loading="lazy"><figcaption>Giao diện chương trình</figcaption></figure>
+<figure><img src="matbang.png" alt="Mặt bằng san nền trong CAD" width="1387" height="870" loading="lazy"><figcaption>Mặt bằng CAD: ô, cao độ, đào đắp</figcaption></figure>
+<figure><img src="tonghop.png" alt="Bảng khối lượng và đường cong cân bằng" width="1520" height="1000" loading="lazy"><figcaption>Tổng hợp và đường cong cân bằng</figcaption></figure>
+</div><p style="color:var(--mute);font-size:15px;margin-top:16px">Hình dùng khu đất mẫu giả lập.</p></div></section>
+<section><div class="wrap"><h2>Bắt đầu trong 4 bước</h2><ol>
+<li>Tải file, giải nén, chạy <code>SanNenPro.exe</code>.</li>
+<li>Bấm <b>Thêm</b>, chọn file DWG hoặc DXF.</li>
+<li>Nhập cao độ thiết kế, bước lưới, hệ số K, và hệ số mái nếu có taluy.</li>
+<li>Bấm <b>CHẠY</b>, rồi <b>Mở kết quả</b>.</li>
+</ol><p>Bản vẽ cần có cao độ tự nhiên và ranh giới là polyline kín. Tên layer tùy ý, chương trình tự nhận.</p></div></section>
+</main>
+<footer><div class="wrap">SanNenPro 2.0. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu. Kết quả cần được kỹ sư kiểm tra trước khi sử dụng.</div></footer>
+</body>
+</html>
