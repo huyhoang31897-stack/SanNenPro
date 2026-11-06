@@ -29,7 +29,7 @@ Muốn thử ngay: chọn file trong thư mục `Mau`, nhập cao độ thiết 
 |---|---|
 | Cao độ tự nhiên | TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ |
 | Ranh giới | Polyline kín, mỗi khu một polyline |
-| Cao độ thiết kế | Nhập tay, hoặc TEXT trên layer riêng |
+| Cao độ thiết kế | Nhập tay nếu san phẳng. Mặt chỗ cao chỗ thấp: TEXT cao độ thiết kế trên layer riêng, để trống ô cao độ. Chương trình dựng mặt TIN thiết kế, tính đúng theo mặt đó và báo cần nâng hay hạ cả mặt bao nhiêu để cân bằng |
 | Đường gãy, nếu có | Line hoặc polyline, tên layer có chữ `break` hoặc `duong gay` |
 | Cạnh không làm taluy | Line dọc cạnh đó, tên layer có chữ `tuong chan` hoặc `khong taluy` |
 | Hố móng, tầng hầm | Polyline kín, tên layer có chữ `ho mong` hoặc `ham`, TEXT cao độ đáy đặt bên trong |

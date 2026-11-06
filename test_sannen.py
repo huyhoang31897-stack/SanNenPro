@@ -149,4 +149,103 @@ G = sn.taluy_eval(c, np.full(len(c["d"]), td))[0]
 a = float(Vc.sum()) + 300 + float(-G[G < 0].sum() * .25)
 b = float(Vf.sum()) + float(G[G > 0].sum() * .25)
 check("Cân bằng đầy đủ: đào - K x đắp", a - 1.15 * b, 0, 1.0)
+
+# 14. mặt thiết kế không phẳng: đáp số tính độc lập bằng cắt đa giác (h tuyến tính trên từng mảnh)
+from scipy.spatial import Delaunay as _Del
+def exact(poly, gpts, dpts, strip=0.0):
+    """Tích phân đắp, đào chính xác: chồng tam giác đất x tam giác thiết kế x ranh, cắt theo h = 0."""
+    from shapely.geometry import Polygon as P_, box as B_
+    def tris(p):
+        t = _Del(p[:, :2]).simplices
+        return [(Polygon(p[s, :2]), p[s]) for s in t]
+    def plane(v):
+        return np.linalg.solve(np.c_[v[:, :2], np.ones(3)], v[:, 2])
+    G, D = tris(gpts), tris(dpts)
+    f = c = 0.0
+    for gp, gv in G:
+        a = gp.intersection(poly)
+        if a.area < 1e-12:
+            continue
+        cg = plane(gv)
+        for dp, dv in D:
+            b = dp.intersection(a)
+            if b.area < 1e-12:
+                continue
+            cd = plane(dv)
+            k = cd - cg; k[2] += strip          # h = kx x + ky y + k0
+            for part in getattr(b, "geoms", [b]):
+                if part.geom_type != "Polygon":
+                    continue
+                x0, y0, x1, y1 = part.bounds
+                from shapely.geometry import LineString
+                from shapely.ops import split
+                if abs(k[0]) + abs(k[1]) > 1e-12:
+                    if abs(k[1]) > abs(k[0]):
+                        ln = LineString([(x0 - 1, -(k[0] * (x0 - 1) + k[2]) / k[1]), (x1 + 1, -(k[0] * (x1 + 1) + k[2]) / k[1])])
+                    else:
+                        ln = LineString([(-(k[1] * (y0 - 1) + k[2]) / k[0], y0 - 1), (-(k[1] * (y1 + 1) + k[2]) / k[0], y1 + 1)])
+                    pieces = split(part, ln).geoms
+                else:
+                    pieces = [part]
+                for q in pieces:
+                    cc = q.centroid
+                    hv = k[0] * cc.x + k[1] * cc.y + k[2]
+                    if hv > 0:
+                        f += q.area * hv
+                    else:
+                        c -= q.area * hv
+    return f, c
+def tzone(poly, design, cfg):
+    return dict(zone(poly, 0, cfg), design=design)
+# 14a. mặt thiết kế nghiêng hai phương trên đất nghiêng
+gp = grid_pts(-20, 120, -20, 70, 8, lambda x, y: 0.02 * y + 0.3)
+pl = sn.Design("plane", z0=0.5, x0=0, y0=0, ix=0.01, iy=-0.004)
+z = tzone(box(0, 0, 100, 50), pl, cfg)
+sn.compute([z], sn.TIN(gp), cfg)
+dp = np.array([[x, y, 0.5 + 0.01 * x - 0.004 * y] for x in (-20, 120) for y in (-20, 70)])
+ef, ec = exact(box(0, 0, 100, 50), gp, dp)
+check("TK mặt nghiêng: V đắp TIN", z["tvf"], ef, 1e-3)
+check("TK mặt nghiêng: V đào TIN", z["tvc"], ec, 1e-3)
+# 14b. TK là TIN điểm cao độ lệch lưới đất, đất gợn sóng, có đào có đắp
+rng = np.random.default_rng(7)
+gp = grid_pts(-20, 120, -20, 70, 6, lambda x, y: 0.5 * np.sin(x / 17) + 0.3 * np.cos(y / 11))
+gp[:, :2] += rng.uniform(-1.5, 1.5, (len(gp), 2))
+dp = np.array([[-20, -20, 0.2], [120, -20, -0.4], [120, 70, 0.6], [-20, 70, 0.1], [50, 25, 1.2], [30, 40, -0.3], [75, 12, 0.9], [62, 44, 0.0], [12, 8, 0.7]])
+td = sn.Design("tin", pts=dp)
+poly = Polygon([(0, 0), (100, 3), (96, 50), (40, 46), (4, 50)])
+z = tzone(poly, td, cfg)
+sn.compute([z], sn.TIN(gp), cfg)
+ef, ec = exact(poly, gp, dp)
+check("TK là TIN: V đắp TIN", z["tvf"], ef, 1e-3)
+check("TK là TIN: V đào TIN", z["tvc"], ec, 1e-3)
+check("TK là TIN: lưới ô gần TIN (%)", 100 * abs(z["vf"] + z["vc"] - ef - ec) / (ef + ec), 0, 6)
+# 14c. bóc phong hoá cùng TK là TIN
+cfgS = dict(cfg, strip=0.2)
+z = tzone(poly, td, cfgS)
+sn.compute([z], sn.TIN(gp), cfgS)
+ef, ec = exact(poly, gp, dp, strip=0.2)
+check("TK là TIN + bóc 0,2: V đắp", z["tvf"], ef, 1e-3)
+check("TK là TIN + bóc 0,2: V đào", z["tvc"], ec, 1e-3)
+# 14d. vùng điểm TK nhỏ hơn ranh: mặt kéo dài liên tục, có cảnh báo diện tích ngoài
+dp2 = np.array([[10, 10, 0.5], [90, 10, 0.8], [90, 40, 0.2], [10, 40, 0.4], [50, 25, 1.0]])
+d2 = sn.Design("tin", pts=dp2)
+check("Vùng điểm TK nhỏ hơn ranh: diện tích ngoài (m2)", d2.outside_area(box(0, 0, 100, 50)), 5000 - 2400, 1e-6)
+e = d2(np.array([[0, 25], [5, 25], [9.999, 25], [10.001, 25]]))
+check("Mặt TK kéo dài liên tục qua biên vùng điểm", abs(e[2] - e[3]), 0, 1e-3)
+z = tzone(box(0, 0, 100, 50), d2, cfg)
+sn.compute([z], sn.TIN(grid_pts(-20, 120, -20, 70, 10, lambda x, y: 0 * x)), cfg)
+xs = np.arange(0.05, 100, 0.1); ys = np.arange(0.05, 50, 0.1); XX, YY = np.meshgrid(xs, ys)
+hh = d2(np.c_[XX.ravel(), YY.ravel()])
+check("Vùng điểm TK nhỏ hơn ranh: V đắp so với tích phân số", z["tvf"], float(hh[hh > 0].sum() * 0.01), 0.002 * z["tvf"])
+# 14e. cân bằng khi TK không phẳng: dịch cả mặt thiết kế, đào = K x đắp
+gp3 = grid_pts(-20, 120, -20, 70, 6, lambda x, y: 0.5 * np.sin(x / 17) + 0.3 * np.cos(y / 11))
+z = tzone(poly, td, cfg)
+ov = sn.compute([z], sn.TIN(gp3), cfg)
+zd = [td(o.xy.reshape(-1, 2)).reshape(-1, 3) for o in ov]
+mer = sn.Merged(ov, zd)
+dlt = sn.balance(mer, 1.1)[0]
+Vf, Vc, _, _ = mer.volumes(zd[0] + dlt - mer.z)
+check("Cân bằng TK không phẳng: đào - K x đắp", float(Vc.sum() - 1.1 * Vf.sum()), 0, 0.5)
+dl2 = sn.balance_full(mer, 1.1, None, 0.0)
+check("Cân bằng TK không phẳng: hai hàm cùng kết quả", dl2, dlt, 1e-3)
 print("TONG:", sum(R), "/", len(R), flush=True)

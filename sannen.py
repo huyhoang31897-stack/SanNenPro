@@ -518,6 +518,22 @@ class Design:
         self.kind, self.kw = kind, kw
         if kind == "tin":
             self.tin = TIN(kw["pts"])
+            from shapely.geometry import MultiPoint
+            a = np.asarray(kw["pts"], float)
+            self.hull = MultiPoint([tuple(p) for p in a[:, :2]]).convex_hull
+            hb = np.array(self.hull.exterior.coords)
+            self._edges = (hb[:-1], hb[1:], self.tin.filled(hb[:-1])[0], self.tin.filled(hb[1:])[0])
+
+    def _outside(self, q):
+        """Ngoài vùng điểm thiết kế: lấy cao độ tại điểm gần nhất trên biên vùng, nội suy dọc cạnh biên (mặt liên tục)."""
+        A, B, za, zb = self._edges
+        d = B - A
+        L2 = np.maximum((d ** 2).sum(axis=1), 1e-12)
+        t = np.clip(((q[:, None, :] - A[None]) * d[None]).sum(axis=2) / L2[None], 0, 1)
+        P = A[None] + t[..., None] * d[None]
+        k = ((q[:, None, :] - P) ** 2).sum(axis=2).argmin(axis=1)
+        r = np.arange(len(q))
+        return za[k] + t[r, k] * (zb[k] - za[k])
 
     def __call__(self, xy):
         q = np.atleast_2d(np.asarray(xy, float))
@@ -526,7 +542,18 @@ class Design:
         if self.kind == "plane":
             k = self.kw
             return k["z0"] + (q[:, 0] - k["x0"]) * k.get("ix", 0) + (q[:, 1] - k["y0"]) * k.get("iy", 0)
-        return self.tin.filled(q)[0]
+        z = self.tin(q)
+        miss = np.isnan(z)
+        if miss.any():
+            z[miss] = self._outside(q[miss])
+        return z
+
+    def outside_area(self, poly):
+        """Diện tích phần khu nằm ngoài vùng điểm thiết kế (m2)."""
+        return poly.difference(self.hull).area if self.kind == "tin" else 0.0
+
+    def triangles(self):
+        return self.tin.triangles() if self.kind == "tin" else None
 
     def text(self):
         if self.kind == "flat":
@@ -725,13 +752,33 @@ def ear_clip(p):
     return out
 
 
+def no_holes(p):
+    """Tách đa giác có lỗ thành các đa giác không lỗ bằng đường cắt qua lỗ."""
+    if not p.interiors:
+        return [p]
+    from shapely.ops import split
+    from shapely.geometry import LineString
+    c = p.interiors[0].centroid
+    x0, y0, x1, y1 = p.bounds
+    out = []
+    for q in split(p, LineString([(c.x, y0 - 1), (c.x, y1 + 1)])).geoms:
+        out += no_holes(q)
+    return out
+
+
 class Overlay:
     """Các tam giác TIN đã cắt theo ô: dùng chung cho tính khối lượng và cân bằng."""
 
-    def __init__(self, tin: TIN, cells):
+    def __init__(self, tin: TIN, cells, design=None):
         V, Z = tin.triangles()
         polys = [Polygon(t) for t in V]
         tree = STRtree(polys)
+        # mặt thiết kế dạng TIN: cắt thêm theo tam giác thiết kế để trong mỗi mảnh cả hai mặt đều phẳng
+        dt = design.triangles() if design is not None and getattr(design, "kind", "") == "tin" else None
+        if dt is not None:
+            dpol = [Polygon(t) for t in dt[0]]
+            dtree = STRtree(dpol)
+            dhull = design.hull
         xy, zz, own, cover = [], [], [], {}
         # hệ số mặt phẳng z = a x + b y + c cho từng tam giác (toạ độ cục bộ)
         P = V - tin.off
@@ -740,9 +787,17 @@ class Overlay:
             got = 0.0
             for ti in tree.query(pg):
                 g = polys[ti].intersection(pg)
-                for part in getattr(g, "geoms", [g]):
-                    if part.geom_type != "Polygon" or part.area < 1e-9:
-                        continue
+                parts = [p for p in getattr(g, "geoms", [g]) if p.geom_type == "Polygon" and p.area >= 1e-9]
+                if dt is not None:
+                    sub = []
+                    for part in parts:
+                        for di in dtree.query(part):
+                            h = dpol[di].intersection(part)
+                            sub += [p for p in getattr(h, "geoms", [h]) if p.geom_type == "Polygon" and p.area >= 1e-9]
+                        rest = part.difference(dhull)
+                        sub += [p for q in getattr(rest, "geoms", [rest]) if q.geom_type == "Polygon" for p in no_holes(q) if p.area >= 1e-9]
+                    parts = sub
+                for part in parts:
                     got += part.area
                     A = np.c_[P[ti], np.ones(3)]
                     co = np.linalg.solve(A, Z[ti])
@@ -795,8 +850,14 @@ class Overlay:
 
 
 def balance(ov, K, lo=None, hi=None):
-    """Tìm cao độ phẳng sao cho V đào = K x V đắp, và vẽ đường cong."""
+    """Tìm cao độ phẳng (hoặc độ dịch mặt thiết kế khi mặt không phẳng) sao cho V đào = K x V đắp, và vẽ đường cong."""
     z = ov.z
+    zd = getattr(ov, "zd", None)
+    if zd is not None:
+        dh = zd - z
+        lo = -float(dh.max()) if lo is None else lo
+        hi = -float(dh.min()) if hi is None else hi
+        z = -dh   # h = d - z với z = mặt đất - thiết kế
     lo = float(z.min()) if lo is None else lo
     hi = float(z.max()) if hi is None else hi
     def f(td):
@@ -1116,14 +1177,16 @@ def calc_piles(cfg, piles):
     return out
 
 
-def balance_full(mer, K, ctx, extra):
-    """Cao độ phẳng để tổng đào (gồm taluy, hố móng, cọc) = K x tổng đắp (gồm taluy)."""
-    lo, hi = float(mer.z.min()) - 1, float(mer.z.max()) + 1
+def balance_full(mer, K, ctx, extra, ze0=None):
+    """Cao độ phẳng (hoặc độ dịch mặt thiết kế) để tổng đào (gồm taluy, hố móng, cọc) = K x tổng đắp (gồm taluy).
+    ze0: cao độ thiết kế tại mép taluy khi cân bằng theo độ dịch."""
+    z = mer.z if mer.zd is None else mer.z - mer.zd
+    lo, hi = float(z.min()) - 1, float(z.max()) + 1
     def f(td):
-        Vf, Vc, _, _ = mer.volumes(td - mer.z)
+        Vf, Vc, _, _ = mer.volumes(td - z)
         a, b = float(Vc.sum()) + extra, float(Vf.sum())
         if ctx:
-            G = taluy_eval(ctx, np.full(len(ctx["d"]), td))[0]
+            G = taluy_eval(ctx, np.full(len(ctx["d"]), td) if ze0 is None else ze0 + td)[0]
             da = ctx["res"] ** 2
             a += float(-G[G < 0].sum() * da)
             b += float(G[G > 0].sum() * da)
@@ -1155,7 +1218,7 @@ def summary(zones, T, X, bal, cfg, Q, inputs, out, files, layers):
                     surplus_tin_m3=round(S("tvc") + tc + pv + cv - K * (S("tvf") + tf), 2)),
         pits=[dict(name=p["name"], area_m2=round(p["area"], 2), bottom=p["zb"], volume_m3=round(p["v"], 2)) for p in X["pits"]],
         piles=[dict(diameter=p["d"], count=p["n"], length=p["L"], volume_m3=round(p["v"], 2)) for p in X["piles"]],
-        balance=dict(level_inside=round(bal[0], 3), level_all_items=round(bal[2], 3)),
+        balance=dict(mode=bal_mode(bal), level_inside=round(bal[0], 3), level_all_items=round(bal[2], 3)),
         warnings=[f"{t}: {x}" for l, t, x in Q if l == "CẢNH BÁO"],
         errors=[f"{t}: {x}" for l, t, x in Q if l == "LỖI"],
         fixed=[x for l, t, x in Q if l == "ĐÃ SỬA"], files=[str(f) for f in files])
@@ -1170,7 +1233,7 @@ def compute(zones, tin, cfg):
             if nodes:
                 dz = [abs(nodes[k] - v) for k, v in ((f"{q[0]:.2f},{q[1]:.2f}", v) for q, v in zip(c["xy"], c["zn"])) if k in nodes]
                 c["node_diff"] = max(dz, default=0.0)
-        ov = Overlay(tin, z["cells"])
+        ov = Overlay(tin, z["cells"], z["design"])
         h = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3) - (ov.z - cfg["strip"])
         Vf, Vc, Sf, Sc = ov.volumes(h)
         n = len(z["cells"])
@@ -1188,13 +1251,18 @@ def compute(zones, tin, cfg):
     return pieces
 
 
+def bal_mode(bal):
+    return bal[3] if len(bal) > 3 else "level"
+
+
 class Merged:
     """Ghép overlay các khu để tính cân bằng toàn công trường."""
     volumes = Overlay.volumes
 
-    def __init__(self, ovs):
+    def __init__(self, ovs, zd=None):
         self.z = np.vstack([o.z for o in ovs])
         self.area = np.concatenate([o.area for o in ovs])
+        self.zd = None if zd is None else np.vstack(zd)   # cao độ thiết kế tại đỉnh: có thì cân bằng theo độ dịch
 
 
 def hml_cause(c):
@@ -1237,6 +1305,12 @@ def quality(zones, pts, chk, cfg, tin, T, notes, X=None):
                if tree.query(np.array(c["poly"].representative_point().coords)[0])[0] > 1.5 * cfg["step"]]
         add("OK" if not far else "CẢNH BÁO", n, f"{len(far)} ô có tâm cách điểm đo gần nhất trên {1.5 * cfg['step']:.1f} m"
             + (": " + ", ".join(far[:12]) if far else ""))
+        d = z["design"]
+        if d.kind == "tin":
+            out = d.outside_area(z["poly"])
+            pa = 100 * out / z["poly"].area
+            add("OK" if pa < 0.5 else "CẢNH BÁO", n, f"Mặt thiết kế TIN {len(d.kw['pts'])} điểm, cao độ {np.min(d.kw['pts'], axis=0)[2]:.3f} ÷ {np.max(d.kw['pts'], axis=0)[2]:.3f} m"
+                + (f"; {out:.1f} m2 ({pa:.1f}%) nằm ngoài vùng điểm thiết kế, cao độ ở đó kéo dài từ biên vùng điểm" if pa >= 0.5 else ""))
         base = z["tvf"] + z["tvc"]
         dv = z["vf"] + z["vc"] - base
         pc = 100 * dv / base if base else 0
@@ -1446,8 +1520,12 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None, X=None):
     line("Đất thừa (+) / thiếu (-)", f"=E{a0 + 1}+E{a0 + 3}+E{a0 + 4}+E{a0 + 5}-E{a0 + 6}", f"=F{a0 + 1}+F{a0 + 3}+F{a0 + 4}+F{a0 + 5}-F{a0 + 6}",
          "#,##0.00;[Red]-#,##0.00", True)
     line("Đất bóc phong hoá, không dùng đắp", round(X["strip_v"], 2), round(X["strip_v"], 2))
-    line("Cao độ cân bằng trong ranh (TIN)", round(bal[0], 3), None, "0.000", True)
-    line("Cao độ cân bằng gồm mọi hạng mục", round(bal[2], 3), None, "0.000", True)
+    if bal_mode(bal) == "level":
+        line("Cao độ cân bằng trong ranh (TIN)", round(bal[0], 3), None, "0.000", True)
+        line("Cao độ cân bằng gồm mọi hạng mục", round(bal[2], 3), None, "0.000", True)
+    else:
+        line("Dịch mặt thiết kế để cân bằng, trong ranh (m)", round(bal[0], 3), None, "+0.000;-0.000;0.000", True)
+        line("Dịch mặt thiết kế để cân bằng, gồm mọi hạng mục (m)", round(bal[2], 3), None, "+0.000;-0.000;0.000", True)
     ws.column_dimensions["A"].width = 6
     ws.column_dimensions["B"].width = 14
     ws.column_dimensions["C"].width = 13
@@ -1463,8 +1541,9 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None, X=None):
     # Cân bằng
     s = wb.create_sheet("Cân bằng")
     title(s, "ĐƯỜNG CONG CÂN BẰNG ĐÀO ĐẮP / Balance curve",
-          f"San phẳng toàn bộ phạm vi tính ở một cao độ, K = {K}. Cao độ cân bằng: {bal[0]:.3f} m")
-    for i, t in enumerate(["Cao độ san (m)", "V đắp (m3)", "V đào (m3)", "Đất thừa/thiếu (m3)"]):
+          f"San phẳng toàn bộ phạm vi tính ở một cao độ, K = {K}. Cao độ cân bằng: {bal[0]:.3f} m" if bal_mode(bal) == "level" else
+          f"Giữ hình dạng mặt thiết kế, nâng hạ cả mặt, K = {K}. Dịch để cân bằng: {bal[0]:+.3f} m")
+    for i, t in enumerate(["Cao độ san (m)" if bal_mode(bal) == "level" else "Dịch mặt thiết kế (m)", "V đắp (m3)", "V đào (m3)", "Đất thừa/thiếu (m3)"]):
         head(s.cell(4, 1 + i, t))
     r = 5
     for t, vf, vc in bal[1]:
@@ -1717,7 +1796,7 @@ def write_dxf(path, zones, pts, cfg, K, bal, T=None, X=None):
         y = ly - i * rh
         hatch([(x0, y), (x0 + u, y), (x0 + u, y + rh * .6), (x0, y + rh * .6)], "SN-Bang", col)
         msp.add_text(s, dxfattribs={"layer": "SN-Bang", "style": "SN", "height": th * 1.3, "insert": (x0 + u * 1.3, y + rh * .1)})
-    msp.add_text(f"Bước lưới {cfg['step']} m  |  K = {K}  |  Cao độ cân bằng: {bal[2]:.3f} m",
+    msp.add_text(f"Bước lưới {cfg['step']} m  |  K = {K}  |  " + (f"Cao độ cân bằng: {bal[2]:.3f} m" if bal_mode(bal) == "level" else f"Dịch mặt thiết kế để cân bằng: {bal[2]:+.3f} m"),
                  dxfattribs={"layer": "SN-Bang", "style": "SN", "height": th * 1.2, "insert": (x0, ly - 2 * rh)})
     doc.saveas(path)
 
@@ -1799,8 +1878,8 @@ def write_pdf(path, zones, cfg, K, bal, Q, T=None, X=None):
         a2.plot(tt, vf, color="#2E7D32", lw=2, label="V đắp")
         a2.plot(tt, vc, color="#C62828", lw=2, label="V đào")
         a2.axvline(bal[0], color="#1F3864", ls="--", lw=1)
-        a2.text(bal[0], a2.get_ylim()[1] * .92, f"  Cân bằng trong ranh {bal[0]:.3f} m (K={K})", color="#1F3864", fontsize=10)
-        a2.set_xlabel("Cao độ san phẳng (m)")
+        a2.text(bal[0], a2.get_ylim()[1] * .92, f"  Cân bằng trong ranh {bal[0]:{'.3f' if bal_mode(bal) == 'level' else '+.3f'}} m (K={K})", color="#1F3864", fontsize=10)
+        a2.set_xlabel("Cao độ san phẳng (m)" if bal_mode(bal) == "level" else "Dịch mặt thiết kế (m)")
         a2.set_ylabel("m³")
         a2.grid(alpha=.3)
         a2.legend(frameon=False)
@@ -1883,12 +1962,20 @@ def run(inputs, cfg, out=None, no_dwg=False):
         X["pile_points"] = pp
 
     log("3. Cân bằng đào đắp và kiểm tra số liệu")
-    mer = Merged(ovs)
+    flat = all(z["design"].kind == "flat" for z in zones)
+    mer = Merged(ovs, None if flat else [z["design"](o.xy.reshape(-1, 2)).reshape(-1, 3) for z, o in zip(zones, ovs)])
     mer.z = mer.z - cfg["strip"]
     b0 = balance(mer, cfg["k"])
     extra = sum(p["v"] for p in X["pits"]) + sum(p["v"] for p in X["piles"])
     ctx = taluy_ctx(zones, tin, cfg, res=max(1.0, cfg["taluy_res"]), noslope=noslope) if T else None
-    bal = (b0[0], b0[1], balance_full(mer, cfg["k"], ctx, extra) if (ctx or extra) else b0[0])
+    ze0 = None
+    if ctx and not flat:
+        ze0 = np.zeros(len(ctx["d"]))
+        for i, z in enumerate(zones):
+            m = ctx["owner"] == i
+            if m.any():
+                ze0[m] = z["design"](ctx["edge"][m])
+    bal = (b0[0], b0[1], balance_full(mer, cfg["k"], ctx, extra, ze0) if (ctx or extra) else b0[0], "level" if flat else "offset")
     Q = quality(zones, pts, chk, cfg, tin, T, notes, X)
     for lv, tp, tx in Q:
         if lv != "OK":
@@ -1920,7 +2007,10 @@ def run(inputs, cfg, out=None, no_dwg=False):
         log(f"  Taluy : đắp {T['vf'].sum():,.2f} | đào {T['vc'].sum():,.2f} m3")
     if X["strip_v"] or X["pits"] or X["piles"]:
         log(f"  Bóc phong hoá {X['strip_v']:,.2f} | hố móng {sum(p['v'] for p in X['pits']):,.2f} | cọc {sum(p['v'] for p in X['piles']):,.2f} m3")
-    log(f"  Cao độ cân bằng (K={cfg['k']}): {bal[0]:.3f} m trong ranh, {bal[2]:.3f} m gồm mọi hạng mục\n  Thư mục: {out}")
+    if bal_mode(bal) == "level":
+        log(f"  Cao độ cân bằng (K={cfg['k']}): {bal[0]:.3f} m trong ranh, {bal[2]:.3f} m gồm mọi hạng mục\n  Thư mục: {out}")
+    else:
+        log(f"  Mặt thiết kế không phẳng. Dịch cả mặt để cân bằng (K={cfg['k']}): {bal[0]:+.3f} m trong ranh, {bal[2]:+.3f} m gồm mọi hạng mục\n  Thư mục: {out}")
     files = sorted(p for p in out.iterdir() if p.name.startswith("SanNen_"))
     res = summary(zones, T, X, bal, cfg, Q, inputs, out, files, [s.layers for s in sources])
     if cfg["export_3d"]:

@@ -36,7 +36,7 @@ button.off{background:#fff}#hide{position:absolute;right:6px;top:6px;margin:0;pa
 <tr><td id="exl">Taluy, hố móng, cọc</td><td id="ex"></td></tr>
 <tr><td>Thừa (+) / thiếu (-)</td><td id="sur"></td></tr>
 <tr><td>Hệ số K</td><td><input id="k" type="number" step="0.01" style="width:64px"></td></tr></table></div>
-<div class="row"><label class="t"><input type="checkbox" id="lg" checked>Mặt đất xung quanh</label>
+<div class="row"><label class="t"><input type="checkbox" id="lg">Mặt đất xung quanh</label>
 <label class="t"><input type="checkbox" id="ld" checked><span class="leg" style="background:#24914a"></span><span class="leg" style="background:#be2d37"></span>Khối đắp, khối đào</label>
 <label class="t"><input type="checkbox" id="ln" checked><span class="leg" style="background:#9b9b9b"></span>Khối nền sau san</label>
 <label class="t"><input type="checkbox" id="lc">Lưới ô</label>
@@ -155,7 +155,7 @@ const dr=(m,L,A)=>{gl.uniform1f(uL,L);gl.uniform1f(uA,A);gl.bindVertexArray(m.a)
 gl.enable(gl.CULL_FACE);if(sol)dr(sol,1,1);gl.disable(gl.CULL_FACE);if(sedge)dr(sedge,0,1);if($("lc").checked)dr(gl1,0,1);if(tal&&$("lt").checked&&off===0&&!xpl)dr(tal,1,1);if(secl)dr(secl,0,1);
 if($("lg").checked&&!xpl){if(!gnd)gnd=groundOut();dr(gnd,1,1)}labels()
 if($("lp").checked){gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);pits.forEach(m=>dr(m,1,.65));if(plm)dr(plm,0,1);gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST)}}
-function groundOut(){const v=D.ground.v,t=[];for(let i=0;i<D.ground.t.length;i+=3){const a=D.ground.t.slice(i,i+3);let x=0,y=0;for(const k of a){x+=v[k*3]/3;y+=v[k*3+1]/3}if(!find(x,y))t.push(...a)}return mesh(...expand(v,t,[.36,.40,.36]),gl.TRIANGLES)}
+function groundOut(){const v=D.ground.v,t=[];for(let i=0;i<D.ground.t.length;i+=3){const a=D.ground.t.slice(i,i+3);let x=0,y=0,inn=0;for(const k of a){x+=v[k*3]/3;y+=v[k*3+1]/3;if(find(v[k*3],v[k*3+1]))inn=1}if(!inn&&!find(x,y))t.push(...a)}return mesh(...expand(v,t,[.36,.40,.36]),gl.TRIANGLES)}
 function labels(){const L=$("labs");if(!xpl){L.style.display="none";return}const[f,cc]=stats(off);L.style.display="block";L.style.left=(padL()+(cv.clientWidth-padL())/2)+"px";
 L.innerHTML=`<span style="color:#3cc46a">KHỐI ĐẮP ${fmt(f)} m³</span><span style="color:#ff5c66">KHỐI ĐÀO ${fmt(cc)} m³</span><span style="color:#c8c8c8">Dưới: NỀN SAU SAN</span>`}
 // -- tương tác

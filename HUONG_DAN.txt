@@ -10,7 +10,9 @@ THỬ NHANH
 CHUẨN BỊ BẢN VẼ
 - Cao độ tự nhiên: TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ.
 - Ranh giới: polyline kín, mỗi khu một polyline.
-- Cao độ thiết kế: nhập tay, hoặc TEXT trên layer riêng.
+- Cao độ thiết kế: nhập tay nếu san phẳng. Mặt chỗ cao chỗ thấp thì đặt TEXT cao độ thiết kế trên layer riêng
+  và để trống ô cao độ thiết kế: chương trình dựng mặt TIN thiết kế, tính đào đắp chính xác theo mặt đó,
+  và báo cần nâng hay hạ cả mặt bao nhiêu để cân bằng.
 - Đường gãy, nếu có: line hoặc polyline, tên layer có chữ "break" hoặc "duong gay".
   Line có Z thì lấy Z đó; Z = 0 thì lấy cao độ từ mặt đất.
 - Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm "Đọc danh sách layer" và chọn lại.

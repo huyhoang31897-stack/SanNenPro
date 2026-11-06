@@ -20,7 +20,7 @@ git clone https://github.com/huyhoang31897-stack/SanNenPro
 cd SanNenPro
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt   # Linux, macOS: .venv/bin/python
-python test_sannen.py                                     # dòng cuối phải là TONG: 31 / 31
+python test_sannen.py                                     # dòng cuối phải là TONG: n / n (hai số bằng nhau)
 ```
 
 Đọc DWG cần `accoreconsole.exe` của AutoCAD trên Windows. Trên Linux, macOS hoặc máy không có AutoCAD, yêu cầu người dùng lưu bản vẽ sang DXF.
@@ -60,11 +60,17 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | 2 | Sai đầu vào: thiếu file, thiếu điểm cao độ, thiếu ranh giới, thiếu cao độ thiết kế | Đọc stderr, sửa tham số hoặc hỏi người dùng |
 | 3 | Tính xong nhưng có LỖI trong kiểm tra số liệu | Báo `errors` trước khi dùng số |
 
+## Mặt thiết kế
+
+- Phẳng: `--td`, hoặc cao độ từng khu trong `--config`.
+- Mặt nghiêng: khai báo `plane` trong `--config` (z0, x0, y0, ix, iy).
+- Chỗ cao chỗ thấp: đặt điểm cao độ thiết kế trên layer `tk` và bỏ `--td`. Chương trình dựng TIN thiết kế, cắt chồng TIN đất với TIN thiết kế để mỗi mảnh tính đều phẳng ở cả hai mặt, nên khối lượng TIN tính đúng tuyệt đối, không phụ thuộc bước lưới. Khi báo kết quả, nói rõ cân bằng là độ dịch cả mặt (`balance.mode` = `offset`).
+
 ## Tham số
 
 | Tham số | Đơn vị | Ý nghĩa |
 |---|---|---|
-| `--td` | m | Cao độ thiết kế phẳng cho mọi khu |
+| `--td` | m | Cao độ thiết kế phẳng cho mọi khu. Bỏ trống khi bản vẽ có layer điểm cao độ thiết kế (mặt chỗ cao chỗ thấp) |
 | `--step`, `--rot` | m, độ | Bước lưới, góc lưới. Bỏ `--rot` thì lưới theo cạnh dài ranh giới |
 | `--k` | | m³ đất đào cần cho 1 m³ đắp đã đầm |
 | `--taluy-dao`, `--taluy-dap` | m | Hệ số mái 1:m. Bỏ trống là không tính |
@@ -84,7 +90,7 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | Loại | Mặc định | Dữ liệu |
 |---|---|---|
 | `pts` | `TL-CDTN` | TEXT, MTEXT, POINT có Z, block có thuộc tính cao độ |
-| `tk` | `TL-CDTK` | Cao độ thiết kế dạng điểm |
+| `tk` | `TL-CDTK` | Cao độ thiết kế dạng điểm. Các điểm khác cao độ thì dựng TIN thiết kế; chỗ nằm ngoài vùng điểm lấy cao độ kéo dài từ biên vùng điểm và có cảnh báo |
 | `bdy` | `TL-Ranhgioi` | Polyline kín, mỗi khu một polyline |
 | `brk` | `TL-Breakline` | Line, polyline có Z; Z = 0 thì lấy cao độ mặt đất |
 | `noslope` | `TL-KhongTaluy` | Line dọc cạnh không làm mái: tường chắn, ranh đất |
@@ -102,7 +108,7 @@ Có ở stdout khi dùng `--json`, luôn lưu tại `<out>/SanNen_KetQua.json`.
 | `totals` | `fill_grid_m3`, `cut_grid_m3`, `fill_tin_m3`, `cut_tin_m3`, `strip_m3`, `slope_fill_m3`, `slope_cut_m3`, `pit_m3`, `pile_m3`, `surplus_tin_m3`, `area_m2` |
 | `zones` | Khối lượng từng khu |
 | `pits`, `piles` | Từng hố móng, từng nhóm cọc |
-| `balance` | `level_inside`: cao độ cân bằng trong ranh; `level_all_items`: gồm taluy, hố móng, cọc |
+| `balance` | `mode`: `level` khi mọi khu thiết kế phẳng, `offset` khi có mặt thiết kế không phẳng. Với `level`: `level_inside`, `level_all_items` là cao độ san phẳng để cân bằng. Với `offset`: hai giá trị đó là độ nâng (+) hoặc hạ (-) cả mặt thiết kế để cân bằng, giữ nguyên hình dạng mặt. `level_inside` chỉ tính trong ranh, `level_all_items` gồm taluy, hố móng, cọc |
 | `warnings`, `errors`, `fixed` | Kết quả kiểm tra số liệu, các chỉnh sửa ranh giới đã tự làm |
 | `layers`, `params`, `files` | Layer đã dùng, thông số, file đã xuất |
 | `check_3d` | Có khi chạy `--3d`. `mesh`: thể tích khối lưới so với bảng tính. `solid.layers`: thể tích MASSPROP của từng layer solid trong `SanNen_3D.dwg` so với bảng tính. `solid.mesh_left`: số khối chưa đổi được sang solid, khác 0 thì báo người dùng. `solid` là null khi máy không có AutoCAD |
