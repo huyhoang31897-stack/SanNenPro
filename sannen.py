@@ -388,8 +388,11 @@ def make_source(path, raw, cfg):
         src.noslope = raw["lines"].get(L["noslope"], []) + [r + r[:1] for r in raw["closed"].get(L["noslope"], [])]
     if L["pit"]:
         texts = raw["num"].get(L["pit"], [])
-        for g in filter(None, map(to_poly, raw["closed"][L["pit"]])):
-            zb = next((t[2] for t in texts if g.contains(Point(t[0], t[1]))), cfg["pit_bottom"])
+        gs = list(filter(None, map(to_poly, raw["closed"][L["pit"]])))
+        for g in gs:
+            inner = [h for h in gs if h is not g and g.contains(h)]   # hố giật cấp: bỏ chữ nằm trong cấp sâu hơn
+            zb = next((t[2] for t in texts if g.contains(Point(t[0], t[1])) and not any(h.contains(Point(t[0], t[1])) for h in inner)),
+                      cfg["pit_bottom"])
             src.pits.append((g, zb))
     if L["pile"]:
         src.piles = [(c[0], c[1], c[2]) for c in raw["circles"].get(L["pile"], [])]
@@ -1178,32 +1181,57 @@ def calc_taluy(zones, tin, cfg, noslope=None):
 
 def calc_pits(zones, tin, cfg, pits):
     """Hố móng, tầng hầm: đáy phẳng, mái 1:m (m = 0 là thành đứng), đào từ mặt sau san nền.
-    Phần trong ranh lấy cao độ thiết kế, ngoài ranh lấy mặt đất."""
+    Phần trong ranh lấy cao độ thiết kế, ngoài ranh lấy mặt đất.
+    Các hố gần nhau tính chung trên một lưới: mặt đáy chung = thấp nhất của các hố tại mỗi điểm, nên
+    hố chồng nhau không tính trùng, hố nằm trong hố (giật cấp) tự ra cơ giữa các cấp.
+    Khối lượng phần chung gán cho hố sâu hơn ở điểm đó."""
     res = 0.25
     polys = [z["poly"] for z in zones]
     u = unary_union(polys)
-    out = []
-    for i, (pg, zb) in enumerate(pits):
-        if zb is None:
-            out.append(dict(name=f"HM-{i + 1:02d}", area=pg.area, zb=None, v=0.0, top=None, poly=pg))
-            continue
-        m = float(cfg["pit_slope"] or 0)
-        x0, y0, x1, y1 = pg.bounds
+    ztree = STRtree(polys)
+    m = float(cfg["pit_slope"] or 0)
+    out = [dict(name=f"HM-{i + 1:02d}", area=pg.area, zb=zb, v=0.0, top=None, poly=pg, note="") for i, (pg, zb) in enumerate(pits)]
+    ok = [i for i, (pg, zb) in enumerate(pits) if zb is not None]
+    if not ok:
+        return out
+    # phạm vi ảnh hưởng của từng hố (gồm mái), rồi gom các hố có phạm vi giao nhau thành cụm
+    reach = {}
+    for i in ok:
+        pg, zb = pits[i]
         probe = np.array(pg.exterior.coords)
         tmax = float(max(np.max(tin.filled(probe)[0]), max(z["design"](probe).max() for z in zones)))
         W = max((tmax - zb) * m, 0) + 1.0
-        xs = np.arange(x0 - W, x1 + W + res, res)
-        ys = np.arange(y0 - W, y1 + W + res, res)
-        X, Y = np.meshgrid(xs + res / 2, ys + res / 2)
+        reach[i] = (W, pg.buffer(W if m else res, join_style=2))
+    groups, left = [], set(ok)
+    while left:
+        g = {left.pop()}
+        grow = True
+        while grow:
+            grow = False
+            for k in list(left):
+                if any(reach[k][1].intersects(reach[q][1]) for q in g):
+                    g.add(k); left.discard(k); grow = True
+        groups.append(sorted(g))
+    for g in groups:
+        x0, y0, x1, y1 = unary_union([reach[i][1] for i in g]).bounds
+        X, Y = np.meshgrid(np.arange(x0, x1 + res, res) + res / 2, np.arange(y0, y1 + res, res) + res / 2)
         x, y = X.ravel(), Y.ravel()
         P = shapely.points(x, y)
-        d = shapely.distance(P, pg)      # 0 trong hố
-        keep = d <= (W if m else 0)
-        x, y, d, P = x[keep], y[keep], d[keep], P[keep]
+        B = np.full(len(x), np.inf)          # mặt đáy chung
+        own = np.full(len(x), -1)
+        for i in g:
+            pg, zb = pits[i]
+            d = shapely.distance(P, pg)
+            b = np.where(d <= 0, zb, zb + d / m if m else np.inf)
+            b[d > reach[i][0]] = np.inf
+            w = b < B
+            B[w], own[w] = b[w], i
+        keep = np.isfinite(B)
+        x, y, P, B, own = x[keep], y[keep], P[keep], B[keep], own[keep]
         top = tin.filled(np.c_[x, y])[0] - cfg["strip"]
         ins = shapely.contains_xy(u, x, y)
         if ins.any():
-            who = STRtree(polys).nearest(P[ins])
+            who = ztree.nearest(P[ins])
             q = np.c_[x[ins], y[ins]]
             zd = np.zeros(len(q))
             for k, z in enumerate(zones):
@@ -1211,10 +1239,23 @@ def calc_pits(zones, tin, cfg, pits):
                 if w.any():
                     zd[w] = z["design"](q[w])
             top[ins] = zd
-        bottom = zb + (d / m if m else 0.0)   # mái 1:m: đi ngang m thì lên 1
-        h = np.maximum(top - bottom, 0)
-        out.append(dict(name=f"HM-{i + 1:02d}", area=pg.area, zb=zb, v=float(h.sum() * res * res),
-                        top=float(top[d == 0].mean()) if (d == 0).any() else None, poly=pg))
+        h = np.maximum(top - B, 0)
+        for i in g:
+            pg = pits[i][0]
+            w = own == i
+            out[i]["v"] = float(h[w].sum() * res * res)
+            inside = shapely.contains_xy(pg, x, y)
+            out[i]["top"] = float(top[inside].mean()) if inside.any() else None
+        # ghi chú quan hệ giữa các hố
+        for a in g:
+            for b in g:
+                if a < b:
+                    A, Bp = pits[a][0], pits[b][0]
+                    if A.contains(Bp) or Bp.contains(A):
+                        o, n = (a, b) if A.contains(Bp) else (b, a)
+                        out[n]["note"] = f"giật cấp trong {out[o]['name']}"
+                    elif A.intersects(Bp) and A.intersection(Bp).area > 1e-6:
+                        out[b]["note"] = (out[b]["note"] + "; " if out[b]["note"] else "") + f"chồng với {out[a]['name']}, phần chung tính một lần"
     return out
 
 
@@ -1270,7 +1311,7 @@ def summary(zones, T, X, bal, cfg, Q, inputs, out, files, layers):
                     strip_m3=round(X["strip_v"], 2), slope_fill_m3=round(tf, 2), slope_cut_m3=round(tc, 2),
                     pit_m3=round(pv, 2), pile_m3=round(cv, 2),
                     surplus_tin_m3=round(S("tvc") + tc + pv + cv - K * (S("tvf") + tf), 2)),
-        pits=[dict(name=p["name"], area_m2=round(p["area"], 2), bottom=p["zb"], volume_m3=round(p["v"], 2)) for p in X["pits"]],
+        pits=[dict(name=p["name"], area_m2=round(p["area"], 2), bottom=p["zb"], volume_m3=round(p["v"], 2), note=p.get("note", "")) for p in X["pits"]],
         piles=[dict(diameter=p["d"], count=p["n"], length=p["L"], volume_m3=round(p["v"], 2)) for p in X["piles"]],
         balance=dict(mode=bal_mode(bal), level_inside=round(bal[0], 3), level_all_items=round(bal[2], 3)),
         warnings=[f"{t}: {x}" for l, t, x in Q if l == "CẢNH BÁO"],
@@ -1412,6 +1453,8 @@ def quality(zones, pts, chk, cfg, tin, T, notes, X=None):
         for p in X["pits"]:
             if p["zb"] is None:
                 add("CẢNH BÁO", "Hố móng", f"{p['name']} chưa có cao độ đáy, chưa tính. Ghi TEXT cao độ trong polyline hoặc nhập cao độ đáy")
+            elif p.get("note"):
+                add("OK", "Hố móng", f"{p['name']}: {p['note']}")
         for p in X["piles"]:
             if not p["v"]:
                 add("CẢNH BÁO", "Cọc", f"{p['n']} cọc chưa tính được khối lượng, thiếu chiều dài hoặc đường kính")
@@ -1660,7 +1703,7 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None, X=None):
             head(s.cell(4, 1 + i, t))
         r = 5
         for p in X["pits"]:
-            for j, v in enumerate((p["name"], round(p["area"], 2), p["zb"], None, None, None, round(p["v"], 2))):
+            for j, v in enumerate((p["name"] + (f" ({p['note']})" if p.get("note") else ""), round(p["area"], 2), p["zb"], None, None, None, round(p["v"], 2))):
                 body(s.cell(r, 1 + j, v), None if j in (0, 3, 4, 5) else "#,##0.00")
             r += 1
         for p in X["piles"]:
@@ -2045,7 +2088,7 @@ def run(inputs, cfg, out=None, no_dwg=False):
             if not dia:
                 continue
             pt = Point(x, y)
-            top = next((p["zb"] for p in X["pits"] if p["zb"] is not None and p["poly"].contains(pt)), None)
+            top = min((p["zb"] for p in X["pits"] if p["zb"] is not None and p["poly"].contains(pt)), default=None)
             if top is None:
                 zz = [z for z in zones if z["poly"].contains(pt)]
                 top = float(zz[0]["design"](np.array([[x, y]]))[0]) if zz else float(tin.filled(np.array([[x, y]]))[0][0] - cfg["strip"])

@@ -452,7 +452,7 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
         for i, p in enumerate(X["pits"]):
             if p["zb"] is not None:
                 pts, faces = pit_mesh(p, cfg)
-                bodies.append(("SN3D_HO_MONG", 1000 + i, p["name"], sub(pts), faces, p["v"]))
+                bodies.append(("SN3D_HO_MONG", "ho", p["name"], sub(pts), faces, p["v"]))   # gộp mọi hố thành một khối
         piles = [(c["x"] - ox, c["y"] - oy, c["top"], c["d"], c["L"]) for c in X.get("pile_items", [])]
     allp = np.array([pt for b in bodies for pt in b[3]])
     x0, y0, x1, y1 = allp[:, 0].min(), allp[:, 1].min(), allp[:, 0].max(), allp[:, 1].max()
@@ -618,7 +618,7 @@ def write_dwg3d(out, zones, tin_tris, T, X, cfg, origin):
     tab = {"SN3D_DAP": S("tvf"), "SN3D_DAO": S("tvc"), "SN3D_BOC": X.get("strip_v", 0) if X else 0,
            "SN3D_HO_MONG": sum(p["v"] for p in X["pits"]) if X else 0, "SN3D_COC": sum(p["v"] for p in X["piles"]) if X else 0}
     chk = dict(mesh={}, solid=None)
-    for lay in ("SN3D_DAP", "SN3D_DAO", "SN3D_BOC", "SN3D_HO_MONG"):
+    for lay in ("SN3D_DAP", "SN3D_DAO", "SN3D_BOC"):
         vm = sum(mesh_volume(b[3], b[4]) for b in M["bodies"] if b[0] == lay)
         if vm or tab[lay]:
             chk["mesh"][lay] = dict(mesh=round(vm, 2), table=round(tab[lay], 2))

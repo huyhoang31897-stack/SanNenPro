@@ -284,4 +284,42 @@ m.add_lwpolyline([(0, 0), (100, 0), (100, 50), (0, 50)], close=True, dxfattribs=
 f = d / "rach.dxf"; doc.saveas(f)
 r = sn.run([f], dict(sn.DEFAULTS, td=2.0, k=1.0), d / "out2", no_dwg=True)
 check("Đồng mức + điểm, rãnh chữ V: V đắp TIN", r["zones"][0]["tvf"], 50 * 2 * (50 * 2.0 - 0.02 * 50 ** 2), 1e-3)
+
+# 16. hố móng chồng nhau và hố giật cấp
+tin0 = sn.TIN(grid_pts(-30, 60, -30, 60, 10, lambda x, y: 0 * x))
+zz = [dict(poly=box(-20, -20, 40, 40), design=sn.Design("flat", z=0.0))]
+c0 = dict(cfg, pit_slope=0, strip=0)
+P = sn.calc_pits(zz, tin0, c0, [(box(0, 0, 10, 10), -2.0), (box(5, 5, 15, 15), -2.0)])
+check("Hai hố chồng nhau, thành đứng: tổng không tính trùng", sum(p["v"] for p in P), 2 * 175, 1e-6)
+check("Hai hố chồng nhau: có ghi chú chồng", "chồng" in P[1]["note"], True, 0)
+P = sn.calc_pits(zz, tin0, c0, [(box(0, 0, 20, 20), -2.0), (box(5, 5, 15, 15), -5.0)])
+check("Hố giật cấp thành đứng: tổng", sum(p["v"] for p in P), 400 * 2 + 100 * 3, 1e-6)
+check("Hố giật cấp: cấp sâu nhận phần sâu", P[1]["v"], 100 * 5, 1e-6)
+check("Hố giật cấp: có ghi chú", "giật cấp" in P[1]["note"], True, 0)
+# giật cấp có mái 1:1, cơ rộng 5 m, sâu thêm 3 m: tách được thành hai khối chóp cụt cộng lại
+c1 = dict(cfg, pit_slope=1.0, strip=0)
+P = sn.calc_pits(zz, tin0, c1, [(box(0, 0, 20, 20), -2.0), (box(5, 5, 15, 15), -5.0)])
+# đáp số tính số học độc lập: tích phân h(x, y) trên lưới mịn 0,05 m
+xs = np.arange(-10, 30, 0.05) + 0.025
+XX, YY = np.meshgrid(xs, xs)
+from shapely import points as _pts, distance as _dist
+Pp = _pts(XX.ravel(), YY.ravel())
+b1 = -2.0 + _dist(Pp, box(0, 0, 20, 20)); b2 = -5.0 + _dist(Pp, box(5, 5, 15, 15))
+hh = np.maximum(0 - np.minimum(b1, b2), 0)
+check("Hố giật cấp mái 1:1: tổng so với tích phân mịn", sum(p["v"] for p in P), float(hh.sum() * 0.0025), 0.003 * float(hh.sum() * 0.0025))
+# hố giật cấp đọc từ DXF: hai polyline lồng nhau, mỗi cấp một chữ cao độ đáy
+doc = ezdxf.new("R2013"); m = doc.modelspace()
+for l in ("TL-CDTN", "TL-HoMong", "RANH"):
+    doc.layers.add(l)
+for x in range(-30, 61, 10):
+    for y in range(-30, 61, 10):
+        m.add_text("0.000", dxfattribs={"layer": "TL-CDTN", "insert": (x, y)})
+m.add_lwpolyline([(-20, -20), (40, -20), (40, 40), (-20, 40)], close=True, dxfattribs={"layer": "RANH"})
+m.add_lwpolyline([(0, 0), (20, 0), (20, 20), (0, 20)], close=True, dxfattribs={"layer": "TL-HoMong"})
+m.add_lwpolyline([(5, 5), (15, 5), (15, 15), (5, 15)], close=True, dxfattribs={"layer": "TL-HoMong"})
+m.add_text("-2.0", dxfattribs={"layer": "TL-HoMong", "insert": (2, 2)})
+m.add_text("-5.0", dxfattribs={"layer": "TL-HoMong", "insert": (10, 10)})
+f = d / "ho giat cap.dxf"; doc.saveas(f)
+r = sn.run([f], dict(sn.DEFAULTS, td=0.0, pit_slope=0), d / "out3", no_dwg=True)
+check("Hố giật cấp từ DXF: tổng", sum(p["v"] for p in r["X"]["pits"]), 1100, 1e-6)
 print("TONG:", sum(R), "/", len(R), flush=True)

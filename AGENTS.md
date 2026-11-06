@@ -101,7 +101,7 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | `brk` | `TL-Breakline` | Line, polyline có Z; Z = 0 thì lấy cao độ mặt đất |
 | `cnt` | `TL-DongMuc` | Đường đồng mức: polyline mỗi đường một cao độ (elevation). Dùng làm đường gãy và điểm cao độ; dùng được khi bản vẽ chỉ có đồng mức. Tự nhận layer tên có chữ `dong muc`, `contour`, `dia hinh` |
 | `noslope` | `TL-KhongTaluy` | Line dọc cạnh không làm mái: tường chắn, ranh đất |
-| `pit` | `TL-HoMong` | Polyline kín, TEXT cao độ đáy đặt bên trong |
+| `pit` | `TL-HoMong` | Polyline kín, TEXT cao độ đáy đặt bên trong. Hố giật cấp: vẽ mỗi cấp một polyline lồng nhau, mỗi cấp một chữ cao độ đáy. Hố chồng nhau tính chung một lần, phần chung gán cho hố sâu hơn; JSON `pits[].note` ghi quan hệ giữa các hố |
 | `pile` | `TL-Coc` | CIRCLE đúng đường kính, hoặc block kèm `--d-coc` |
 
 Không có layer mặc định thì chương trình dò theo tên và nội dung. Luôn xem `layers` trong JSON để biết layer đã dùng.

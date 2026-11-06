@@ -32,7 +32,7 @@ Muốn thử ngay: chọn file trong thư mục `Mau`, nhập cao độ thiết 
 | Cao độ thiết kế | Nhập tay nếu san phẳng. Mặt chỗ cao chỗ thấp: TEXT cao độ thiết kế trên layer riêng, để trống ô cao độ. Chương trình dựng mặt TIN thiết kế, tính đúng theo mặt đó và báo cần nâng hay hạ cả mặt bao nhiêu để cân bằng |
 | Đường gãy, nếu có | Line hoặc polyline, tên layer có chữ `break` hoặc `duong gay` |
 | Cạnh không làm taluy | Line dọc cạnh đó, tên layer có chữ `tuong chan` hoặc `khong taluy` |
-| Hố móng, tầng hầm | Polyline kín, tên layer có chữ `ho mong` hoặc `ham`, TEXT cao độ đáy đặt bên trong |
+| Hố móng, tầng hầm | Polyline kín, tên layer có chữ `ho mong` hoặc `ham`, TEXT cao độ đáy đặt bên trong. Hố giật cấp: mỗi cấp một polyline lồng nhau, mỗi cấp một cao độ đáy. Hố chồng nhau chỉ tính một lần |
 | Cọc khoan nhồi | CIRCLE đúng đường kính, tên layer có chữ `coc` |
 
 Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm **Đọc danh sách layer** và chọn lại.
@@ -105,7 +105,6 @@ Thiếu thông số thì hỏi tôi, không tự đoán. Trả về bảng khố
 
 ## Chưa làm được
 
-- Đáy hố là mặt phẳng, chưa có hố giật cấp. Các hố chồng nhau sẽ tính trùng.
 - Taluy một mái liên tục, chưa có cơ.
 - Cọc chỉ tính đất khoan của cọc tròn, không trừ phần cọc nằm trong hố móng.
 
