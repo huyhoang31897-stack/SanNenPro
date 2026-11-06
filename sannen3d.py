@@ -59,6 +59,77 @@ def split_all(xy, zg, zd):
     return out
 
 
+def clean_tris(tris, tol=0.005, hmin=0.001):
+    """Làm sạch lưới tam giác trước khi dựng khối solid: gộp đỉnh cách nhau dưới tol (mặt bằng),
+    bỏ tam giác suy biến, lật cạnh của tam giác quá mảnh. tris: [(x, y, a, b)] * 3."""
+    from scipy.spatial import cKDTree
+    pts = [q for t in tris for q in t]
+    if not pts:
+        return []
+    P = np.array([q[:2] for q in pts], float)
+    par = list(range(len(P)))
+
+    def find(i):
+        while par[i] != i:
+            par[i] = par[par[i]]
+            i = par[i]
+        return i
+    for i, j in cKDTree(P).query_pairs(tol):
+        ri, rj = find(i), find(j)
+        if ri != rj:
+            par[max(ri, rj)] = min(ri, rj)
+    rep = [find(i) for i in range(len(P))]
+    area = lambda f: (P[f[1], 0] - P[f[0], 0]) * (P[f[2], 1] - P[f[0], 1]) - (P[f[2], 0] - P[f[0], 0]) * (P[f[1], 1] - P[f[0], 1])
+    faces = set()
+    for k in range(len(tris)):
+        f = tuple(rep[3 * k + i] for i in range(3))
+        if len(set(f)) < 3:
+            continue
+        a = area(f)
+        if abs(a) < 1e-9:
+            continue
+        faces.add(f if a > 0 else (f[0], f[2], f[1]))
+    faces = set(faces)
+    for _ in range(5):
+        emap = {}
+        for f in faces:
+            for i in range(3):
+                emap[(f[i], f[(i + 1) % 3])] = f
+        changed = False
+        for f in list(faces):
+            if f not in faces:
+                continue
+            best = None
+            for i in range(3):
+                u, v, w = f[i], f[(i + 1) % 3], f[(i + 2) % 3]
+                L = np.hypot(*(P[v] - P[u]))
+                if best is None or L > best[0]:
+                    best = (L, u, v, w)
+            L, u, v, w = best
+            h = abs(area(f)) / L if L else 0
+            if h >= hmin:
+                continue
+            g = emap.get((v, u))
+            if g is None or g not in faces:
+                faces.discard(f)            # cạnh biên: bỏ tam giác, biên đi qua đỉnh w
+            else:
+                x = [k for k in g if k not in (u, v)][0]
+                n1, n2 = (w, u, x), (x, v, w)
+                if area(n1) > 1e-9 and area(n2) > 1e-9:
+                    faces.discard(f)
+                    faces.discard(g)
+                    faces.add(n1)
+                    faces.add(n2)
+                else:
+                    continue
+            changed = True
+            for e in ((u, v), (v, w), (w, u)):
+                emap.pop(e, None)
+        if not changed:
+            break
+    return [[pts[k] for k in f] for f in faces]
+
+
 def body_mesh(tris, pinch=False):
     """Khối kín giữa mặt đất và mặt thiết kế: mặt trên, mặt dưới, vách biên.
     pinch=True: đỉnh có bề dày 0 dùng chung cho mặt trên và dưới, để AutoCAD đổi được sang solid."""
@@ -409,17 +480,17 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
         zd = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3)
         zd = np.where(np.abs(zd - zg) < 0.002, zg, zd)   # chênh dưới 2 mm coi như bằng, tránh mặt quá mảnh khi đổi solid
         allp = split_all(ov.xy, zg, zd)
-        p, q = body_mesh([[(a[0], a[1], min(a[2], a[3]), zbase) for a in t] for t in allp], pinch=True)
+        p, q = body_mesh(clean_tris([[(a[0], a[1], min(a[2], a[3]), zbase) for a in t] for t in allp]), pinch=True)
         bodies.append(("SN3D_NEN", z["name"] + " nền", sub(p), q, None))
         fill, cut = split_triangles(ov.xy, zg, zd)
         for tris, lay, nm, v in ((fill, "SN3D_DAP", "đắp", z["tvf"]), (cut, "SN3D_DAO", "đào", z["tvc"])):
             if tris:
-                p, q = body_mesh(tris, pinch=True)
+                p, q = body_mesh(clean_tris(tris), pinch=True)
                 bodies.append((lay, f"{z['name']} {nm}", sub(p), q, v))
         if cfg["strip"] > 0:
             tris = [[(a[0], a[1], a[2] + cfg["strip"], a[2]) for a in t]
                     for t in ([[(x, y, g, g) for (x, y), g in zip(pp, gg)] for pp, gg in zip(ov.xy, zg)])]
-            p, q = body_mesh(tris, pinch=True)
+            p, q = body_mesh(clean_tris(tris), pinch=True)
             bodies.append(("SN3D_BOC", z["name"] + " bóc", sub(p), q, None))
     if T and T.get("mesh") and T["mesh"]["faces"]:
         surfaces.append(("SN3D_TALUY", "Mái taluy", sub(T["mesh"]["pts"]), [tuple(f) for f in T["mesh"]["faces"]]))
@@ -532,7 +603,7 @@ def acad_script(dxf, dwg, mpr, M, origin):
             L.append(f'(command "_.CYLINDER" \'({x:.4f} {y:.4f} {top - Lc:.4f}) {d / 2:.4f} {Lc:.4f})')
         L.append('(setvar "CLAYER" "0")')
     m = mpr.as_posix()
-    for mode in (3, 0):   # lần 2, 3 cho các khối chưa đổi được
+    for mode in (3,):   # lần 2 cho các khối chưa đổi được
         L.append(f'(setvar "SMOOTHMESHCONVERT" {mode})')
         L.append(f'(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "{lays}")))) (command "_.CONVTOSOLID" ss ""))')
     L.append(f'(setq ss (ssget "_X" \'((0 . "3DSOLID") (8 . "{",".join(CHECK_LAYERS)}"))) i 0)')
