@@ -446,8 +446,9 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
     x0, y0, x1, y1 = allp[:, 0].min(), allp[:, 1].min(), allp[:, 0].max(), allp[:, 1].max()
     zt = allp[:, 2].max()
     W = max(x1 - x0, y1 - y0)
-    lift = max(4.0, 0.5 * (zt - zbase))
-    lifts = {"SN3D_NEN": 0.0, "SN3D_DAP": lift, "SN3D_DAO": 2 * lift, "SN3D_BOC": 3 * lift}
+    lift = max(4.0, 0.5 * (zt - zbase), 0.3 * W)
+    # hình tách: đắp và đào không chồng nhau trên mặt bằng nên nhấc cùng một mức
+    lifts = {"SN3D_NEN": 0.0, "SN3D_DAP": lift, "SN3D_DAO": lift, "SN3D_BOC": 2 * lift}
     return dict(bodies=bodies, surfaces=surfaces, piles=piles, zbase=zbase, box=(x0, y0, x1, y1, zt), W=W,
                 dx=(x1 - x0) + 0.45 * W, lift=lift, lifts=lifts)
 
@@ -473,6 +474,8 @@ def write_dxf3d(path, M, zones, X, origin, shift=(0.0, 0.0), for_acad=False):
             ly = doc.layers.add(nm + suf)
             ly.rgb = rgb
             ly.description = desc + (" (hình tách)" if suf else "")
+            if nm == "SN3D_BOC" and not suf:
+                ly.off()   # lớp bóc phủ kín mặt trên; tắt để thấy đào đắp, bật khi cần
     tmp = set()
     for b in M["bodies"]:
         t = temp_layer(b[0], b[1])
@@ -519,13 +522,13 @@ def write_dxf3d(path, M, zones, X, origin, shift=(0.0, 0.0), for_acad=False):
     S = lambda k: sum(z[k] for z in zones)
     vals = {"SN3D_NEN": None, "SN3D_DAP": S("tvf"), "SN3D_DAO": S("tvc"), "SN3D_BOC": X.get("strip_v", 0) if X else 0}
     names = {"SN3D_NEN": "NỀN SAU SAN", "SN3D_DAP": "KHỐI ĐẮP", "SN3D_DAO": "KHỐI ĐÀO", "SN3D_BOC": "BÓC PHONG HOÁ"}
-    for k in ("SN3D_NEN", "SN3D_DAP", "SN3D_DAO", "SN3D_BOC"):
+    for k, up in (("SN3D_NEN", 0), ("SN3D_DAP", 0), ("SN3D_DAO", 1.8), ("SN3D_BOC", 0)):
         zz = [pt[2] for b in M["bodies"] if b[0] == k for pt in b[3]]
         if zz:
             txt = names[k] + ("" if vals[k] is None else f"  {vals[k]:,.2f} m³")
-            label(txt, x0 + dx - 0.04 * W, y0 - 0.04 * W, min(zz) + M["lifts"][k] + (0.5 if k == "SN3D_NEN" else 0.0), LAYERS_3D[k][0])
-    label("HIỆN TRẠNG VÀ THIẾT KẾ", x0 - 0.04 * W, y0 - 0.04 * W, zt + 1.0)
-    label("TÁCH KHỐI", x0 + dx - 0.04 * W, y0 - 0.04 * W, zt + 4 * lift + 1.0)
+            label(txt, x0 + dx - 0.04 * W, y0 - 0.04 * W, min(zz) + M["lifts"][k] + up * h, LAYERS_3D[k][0])
+    label("HIỆN TRẠNG VÀ THIẾT KẾ", x0 - 0.04 * W, y0 - 0.04 * W, zt + 2 * h)
+    label("TÁCH KHỐI", x0 + dx - 0.04 * W, y0 - 0.04 * W, zt + 2 * lift + 2 * h)
     doc.saveas(path)
     return sorted(tmp)
 

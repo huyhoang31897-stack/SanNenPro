@@ -48,7 +48,7 @@ python test_sannen.py                                     # dòng cuối phải 
 
 3. Đọc mã thoát và JSON, xem bảng dưới.
 
-4. Trả cho người dùng: tổng khối lượng, đất thừa hoặc thiếu, các `warnings`, `errors`, `fixed`, và đường dẫn file trong `files`. Có `--3d` thì nhắc người dùng mở `SanNen_3D.html` bằng trình duyệt để xem.
+4. Trả cho người dùng: tổng khối lượng, đất thừa hoặc thiếu, các `warnings`, `errors`, `fixed`, và đường dẫn file trong `files`. Có `--3d` thì báo thêm kết quả `check_3d` (thể tích khối solid so với bảng tính) và nhắc người dùng: xem nhanh bằng `SanNen_3D.html`, xem trong AutoCAD bằng `SanNen_3D.dwg` hoặc lệnh `SANNEN3D`.
 
 Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung, mỗi polyline ranh giới là một khu.
 
@@ -76,7 +76,7 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | `--use-grid` | | Dùng lưới và nhãn HML trong bản vẽ để đối chiếu |
 | `--no-fix-ranh` | | Không tự cắt chồng lấn, lấp khe hở |
 | `--config` | | File JSON, xem `config_mau.json`: cao độ từng khu, mặt nghiêng, mái riêng từng khu |
-| `--3d` | | Xuất `SanNen_3D.html`, `SanNen_3D.ifc`, `SanNen_TIN.xml` |
+| `--3d` | | Xuất `SanNen_3D.dwg`, `SanNen_3D.html`, `SanNen_3D.ifc`, `SanNen_TIN.xml` |
 | `--json`, `--no-dwg`, `--out` | | Xuất JSON ra stdout, bỏ DWG, thư mục kết quả |
 
 ## Layer
@@ -105,6 +105,7 @@ Có ở stdout khi dùng `--json`, luôn lưu tại `<out>/SanNen_KetQua.json`.
 | `balance` | `level_inside`: cao độ cân bằng trong ranh; `level_all_items`: gồm taluy, hố móng, cọc |
 | `warnings`, `errors`, `fixed` | Kết quả kiểm tra số liệu, các chỉnh sửa ranh giới đã tự làm |
 | `layers`, `params`, `files` | Layer đã dùng, thông số, file đã xuất |
+| `check_3d` | Có khi chạy `--3d`. `mesh`: thể tích khối lưới so với bảng tính. `solid.layers`: thể tích MASSPROP của từng layer solid trong `SanNen_3D.dwg` so với bảng tính. `solid.mesh_left`: số khối chưa đổi được sang solid, khác 0 thì báo người dùng. `solid` là null khi máy không có AutoCAD |
 
 `surplus_tin_m3` = đào + taluy đào + hố móng + cọc − K × (đắp + taluy đắp). Đất bóc phong hoá không tính vào phần dùng lại.
 
@@ -112,11 +113,14 @@ Có ở stdout khi dùng `--json`, luôn lưu tại `<out>/SanNen_KetQua.json`.
 
 | File | Mở bằng | Nội dung |
 |---|---|---|
+| `SanNen_3D.dwg` | AutoCAD, hoặc lệnh `SANNEN3D` trong bản vẽ gốc | Khối solid thật: nền sau san (xám), khối đắp (xanh), khối đào (đỏ), bóc phong hoá (nâu, layer tắt sẵn), hố móng, cọc, mái taluy, mặt đất xung quanh. Mỗi khu một khối, chọn khối gõ `MASSPROP` ra đúng thể tích trong bảng tính. Bên phải có hình tách khối kèm chữ ghi khối lượng. Đúng toạ độ bản vẽ, đơn vị m. Máy không có AutoCAD thì ra `SanNen_3D.dxf` dạng mesh |
 | `SanNen_3D.html` | Trình duyệt bất kỳ, cả điện thoại | Mặt đất, mặt thiết kế tô màu đào đắp, taluy, hố móng, cọc. Thanh kéo cao độ san tính lại đào đắp ngay, nút Cân bằng, mặt cắt, bấm ô xem khối lượng |
 | `SanNen_3D.ifc` | Navisworks: Open hoặc Append. Revit: Insert > Link IFC | IFC4. Khối đắp, khối đào từng khu có thuộc tính khối lượng, mặt đất, mặt thiết kế, mái taluy, hố móng, cọc. Toạ độ thật của bản vẽ, đơn vị m |
 | `SanNen_TIN.xml` | Civil 3D: Insert > LandXML | Mặt TIN hiện trạng và thiết kế |
 
 Thanh kéo trong file HTML tính lại phần trong ranh; taluy chỉ đúng ở cao độ thiết kế gốc.
+
+Có AutoCAD thì bước 3D mất thêm khoảng 30 giây với khu 1,6 ha, khu lớn hơn lâu hơn. Không cần 3D thì bỏ `--3d` để chạy nhanh.
 
 ## Dùng trong Python
 

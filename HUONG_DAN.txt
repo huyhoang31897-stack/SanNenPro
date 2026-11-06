@@ -1,4 +1,4 @@
-SANNENPRO 2.3: TÍNH KHỐI LƯỢNG SAN NỀN
+SANNENPRO 2.4: TÍNH KHỐI LƯỢNG SAN NỀN
 
 CÀI ĐẶT
 - Giải nén, giữ nguyên thư mục SanNenPro. Không cần cài Python.
@@ -23,6 +23,9 @@ SỬ DỤNG
 
 XUẤT 3D
 - Tick "Xuất 3D" (mặc định đã bật). Kết quả có thêm:
+  SanNen_3D.dwg: mô hình khối solid trong AutoCAD. Nền sau san màu xám, khối đắp xanh, khối đào đỏ, bóc phong hoá nâu
+  (layer SN3D_BOC tắt sẵn), hố móng, cọc. Bên phải là hình tách khối có ghi khối lượng. Chọn khối, gõ MASSPROP
+  để xem thể tích, khớp với bảng Excel.
   SanNen_3D.html: mở bằng trình duyệt, xoay, xem màu đào đắp, kéo thanh cao độ để thử cao độ san, bấm "Cân bằng",
   làm mặt cắt, bấm vào ô để xem khối lượng.
   SanNen_3D.ifc: mở bằng Navisworks (Open hoặc Append) để kiểm tra va chạm với mô hình khác; Revit dùng Link IFC.
@@ -32,7 +35,7 @@ DÙNG TRONG AUTOCAD
 1. Mở SanNenPro.exe một lần.
 2. Trong AutoCAD gõ APPLOAD, chọn sannen.lsp (thêm vào Startup Suite để tự nạp).
 3. Gõ SANNEN để mở chương trình với bản vẽ đang mở.
-4. Tính xong gõ SANNENKQ để chèn kết quả đúng tọa độ.
+4. Tính xong gõ SANNENKQ để chèn mặt bằng kết quả đúng tọa độ, SANNEN3D để chèn mô hình 3D.
 
 KẾT QUẢ
 - SanNen_KhoiLuong.xlsx: bảng từng khu, tổng hợp, cân đối đất, cân bằng, taluy, kiểm tra.

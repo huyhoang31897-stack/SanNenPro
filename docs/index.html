@@ -9,7 +9,7 @@
 <meta property="og:title" content="SanNenPro: tính khối lượng san nền từ DWG/DXF">
 <meta property="og:description" content="Đọc điểm cao độ và ranh giới trong bản vẽ, tính đào đắp theo lưới ô và TIN, xuất Excel, DWG, PDF.">
 <meta property="og:url" content="https://huyhoang31897-stack.github.io/SanNenPro/">
-<meta property="og:image" content="https://huyhoang31897-stack.github.io/SanNenPro/preview.png?v=2">
+<meta property="og:image" content="https://huyhoang31897-stack.github.io/SanNenPro/preview.png?v=3">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
@@ -48,8 +48,8 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <table class="block">
 <tr><td colspan="2" class="name">SanNenPro</td></tr>
 <tr><td colspan="2" class="what">Tính khối lượng san nền từ DWG/DXF</td></tr>
-<tr><td>Phiên bản 2.3</td><td>Windows</td></tr>
-<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.3.zip">Tải về (99 MB)</a></td></tr>
+<tr><td>Phiên bản 2.4</td><td>Windows</td></tr>
+<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.4.zip">Tải về</a></td></tr>
 </table>
 </div>
 <main>
@@ -58,9 +58,10 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <figure><video controls playsinline preload="none" poster="demo_poster.jpg" width="1280" height="720"><source src="demo.mp4" type="video/mp4">Trình duyệt không phát được video. <a href="demo.mp4">Tải video</a>.</video><figcaption>Quy trình trên khu đất mẫu, 51 giây, không có tiếng.</figcaption></figure>
 
 <h2>Mô hình 3D</h2>
-<p>Tick <b>Xuất 3D</b>, hoặc để AI chạy với <code>--3d</code>, sẽ có thêm 3 file:</p>
+<p>Tick <b>Xuất 3D</b>, hoặc để AI chạy với <code>--3d</code>, sẽ có thêm 4 file:</p>
 <table class="d">
 <tr><th>File</th><th>Mở bằng</th><th>Dùng để</th></tr>
+<tr><td>SanNen_3D.dwg</td><td>AutoCAD, lệnh SANNEN3D</td><td>Khối solid thật: nền sau san, khối đắp, khối đào, bóc phong hoá, hố móng, cọc, kèm hình tách khối ghi khối lượng. Chọn khối gõ MASSPROP ra đúng thể tích bảng tính</td></tr>
 <tr><td>SanNen_3D.html</td><td>Trình duyệt, cả điện thoại</td><td>Xem màu đào đắp, kéo thanh cao độ để thử cao độ san và xem khối lượng đổi theo, bấm Cân bằng, làm mặt cắt, bấm vào ô để xem khối lượng</td></tr>
 <tr><td>SanNen_3D.ifc</td><td>Navisworks, Revit</td><td>Kiểm tra va chạm với mô hình kết cấu, MEP. Khối đắp, đào có thuộc tính khối lượng, đặt đúng toạ độ bản vẽ</td></tr>
 <tr><td>SanNen_TIN.xml</td><td>Civil 3D</td><td>Mặt TIN hiện trạng và thiết kế</td></tr>
@@ -135,7 +136,7 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 </table>
 
 <h2>Trong AutoCAD</h2>
-<p>Mở SanNenPro.exe một lần, dùng APPLOAD nạp <b>sannen.lsp</b>. Lệnh <b>SANNEN</b> mở chương trình với bản vẽ đang mở, lệnh <b>SANNENKQ</b> chèn kết quả đúng tọa độ.</p>
+<p>Mở SanNenPro.exe một lần, dùng APPLOAD nạp <b>sannen.lsp</b>. Lệnh <b>SANNEN</b> mở chương trình với bản vẽ đang mở, lệnh <b>SANNENKQ</b> chèn mặt bằng kết quả đúng tọa độ, lệnh <b>SANNEN3D</b> chèn mô hình 3D.</p>
 
 <h2>Để AI chạy</h2>
 <p>Đây là cách dùng chính. Trợ lý AI chạy được Python làm từ đầu đến cuối mà không cần mở giao diện, mặc định xuất cả mô hình 3D. Tài liệu riêng cho AI nằm ở <a href="https://github.com/huyhoang31897-stack/SanNenPro/blob/main/AGENTS.md">AGENTS.md</a>: cách cài, quy trình, tham số, mã thoát và cấu trúc kết quả JSON. Máy không có AutoCAD thì đưa bản vẽ dạng DXF.</p>

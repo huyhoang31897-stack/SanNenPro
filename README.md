@@ -2,9 +2,9 @@
 
 Tính khối lượng san nền từ DWG/DXF. Đọc điểm cao độ và ranh giới trong bản vẽ, chia lưới ô, tính đào đắp từng ô rồi xuất Excel, DWG, PDF.
 
-![Mặt bằng đào đắp của khu đất mẫu](docs/preview.png)
+![Mô hình 3D khu đất mẫu: nền, khối đắp, khối đào và hình tách khối](docs/preview.png)
 
-**[Tải bản Windows 2.3 (99 MB)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.3.zip)** · [Trang giới thiệu, có video](https://huyhoang31897-stack.github.io/SanNenPro/) · [Xem 3D mẫu](https://huyhoang31897-stack.github.io/SanNenPro/mau3d.html) · [File mẫu](mau/)
+**[Tải bản Windows 2.4](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.4.zip)** · [Trang giới thiệu, có video](https://huyhoang31897-stack.github.io/SanNenPro/) · [Xem 3D mẫu](https://huyhoang31897-stack.github.io/SanNenPro/mau3d.html) · [File mẫu](mau/)
 
 Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.
 
@@ -45,6 +45,7 @@ Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm **Đọc 
 | `SanNen_MatBang.dwg` | Lưới, cao độ nút, đào đắp từng ô, đường 0, chân taluy |
 | `SanNen_BaoCao.pdf` | Bản đồ đào đắp, tổng hợp, đường cong cân bằng, cảnh báo |
 | `SanNen_KetQua.json` | Toàn bộ số liệu cho AI hoặc phần mềm khác đọc |
+| `SanNen_3D.dwg` | Mô hình 3D solid trong AutoCAD: nền, khối đắp, khối đào, bóc phong hoá, hố móng, cọc, có hình tách khối. Chọn khối gõ `MASSPROP` ra đúng thể tích bảng tính |
 | `SanNen_3D.html` | Mô hình 3D xem trên trình duyệt: thanh kéo cao độ, cân bằng, mặt cắt, bấm ô xem khối lượng |
 | `SanNen_3D.ifc` | IFC4 cho Navisworks, Revit: khối đắp, đào có thuộc tính khối lượng, đúng toạ độ bản vẽ |
 | `SanNen_TIN.xml` | LandXML cho Civil 3D |
@@ -78,7 +79,7 @@ Khu đất 7 khu vực, khoảng 16.400 m², đã tính bằng HML. Chạy lại
 
 ## Trong AutoCAD
 
-Mở `SanNenPro.exe` một lần, dùng `APPLOAD` nạp `sannen.lsp`. Lệnh `SANNEN` mở chương trình với bản vẽ đang mở, lệnh `SANNENKQ` chèn kết quả đúng tọa độ.
+Mở `SanNenPro.exe` một lần, dùng `APPLOAD` nạp `sannen.lsp`. Lệnh `SANNEN` mở chương trình với bản vẽ đang mở, lệnh `SANNENKQ` chèn mặt bằng kết quả đúng tọa độ, lệnh `SANNEN3D` chèn mô hình 3D và chuyển sang góc nhìn 3D.
 
 ## Để AI chạy
 
