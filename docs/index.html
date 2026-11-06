@@ -48,14 +48,25 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <table class="block">
 <tr><td colspan="2" class="name">SanNenPro</td></tr>
 <tr><td colspan="2" class="what">Tính khối lượng san nền từ DWG/DXF</td></tr>
-<tr><td>Phiên bản 2.2</td><td>Windows</td></tr>
-<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.2.zip">Tải về (99 MB)</a></td></tr>
+<tr><td>Phiên bản 2.3</td><td>Windows</td></tr>
+<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.3.zip">Tải về (99 MB)</a></td></tr>
 </table>
 </div>
 <main>
 <p>SanNenPro đọc điểm cao độ và ranh giới trong bản vẽ, chia lưới ô, tính đào đắp từng ô rồi xuất bảng khối lượng và mặt bằng. Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF.</p>
 
 <figure><video controls playsinline preload="none" poster="demo_poster.jpg" width="1280" height="720"><source src="demo.mp4" type="video/mp4">Trình duyệt không phát được video. <a href="demo.mp4">Tải video</a>.</video><figcaption>Quy trình trên khu đất mẫu, 51 giây, không có tiếng.</figcaption></figure>
+
+<h2>Mô hình 3D</h2>
+<p>Tick <b>Xuất 3D</b>, hoặc để AI chạy với <code>--3d</code>, sẽ có thêm 3 file:</p>
+<table class="d">
+<tr><th>File</th><th>Mở bằng</th><th>Dùng để</th></tr>
+<tr><td>SanNen_3D.html</td><td>Trình duyệt, cả điện thoại</td><td>Xem màu đào đắp, kéo thanh cao độ để thử cao độ san và xem khối lượng đổi theo, bấm Cân bằng, làm mặt cắt, bấm vào ô để xem khối lượng</td></tr>
+<tr><td>SanNen_3D.ifc</td><td>Navisworks, Revit</td><td>Kiểm tra va chạm với mô hình kết cấu, MEP. Khối đắp, đào có thuộc tính khối lượng, đặt đúng toạ độ bản vẽ</td></tr>
+<tr><td>SanNen_TIN.xml</td><td>Civil 3D</td><td>Mặt TIN hiện trạng và thiết kế</td></tr>
+</table>
+<p><a href="mau3d.html"><b>Mở mô hình 3D của khu đất mẫu</b></a>, có hố móng, 20 cọc và taluy.</p>
+<figure><a href="mau3d.html"><img src="mau3d.png" alt="Mô hình 3D khu đất mẫu: mặt thiết kế tô màu đào đắp, hố móng và cọc" width="1280" height="760" loading="lazy"></a></figure>
 
 <h2>Cách dùng</h2>
 <ol>
@@ -127,7 +138,7 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <p>Mở SanNenPro.exe một lần, dùng APPLOAD nạp <b>sannen.lsp</b>. Lệnh <b>SANNEN</b> mở chương trình với bản vẽ đang mở, lệnh <b>SANNENKQ</b> chèn kết quả đúng tọa độ.</p>
 
 <h2>Để AI chạy</h2>
-<p>Trợ lý AI chạy được Python có thể làm từ đầu đến cuối mà không cần mở giao diện. Tài liệu riêng cho AI nằm ở <a href="https://github.com/huyhoang31897-stack/SanNenPro/blob/main/AGENTS.md">AGENTS.md</a>: cách cài, quy trình, tham số, mã thoát và cấu trúc kết quả JSON. Máy không có AutoCAD thì đưa bản vẽ dạng DXF.</p>
+<p>Đây là cách dùng chính. Trợ lý AI chạy được Python làm từ đầu đến cuối mà không cần mở giao diện, mặc định xuất cả mô hình 3D. Tài liệu riêng cho AI nằm ở <a href="https://github.com/huyhoang31897-stack/SanNenPro/blob/main/AGENTS.md">AGENTS.md</a>: cách cài, quy trình, tham số, mã thoát và cấu trúc kết quả JSON. Máy không có AutoCAD thì đưa bản vẽ dạng DXF.</p>
 <p>Điền thông số rồi dán đoạn này cho AI cùng file bản vẽ:</p>
 <pre id="prompt">Dùng tool SanNenPro tại https://github.com/huyhoang31897-stack/SanNenPro
 để tính khối lượng san nền cho bản vẽ tôi gửi.

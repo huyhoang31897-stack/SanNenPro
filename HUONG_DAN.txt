@@ -1,4 +1,4 @@
-SANNENPRO 2.2: TÍNH KHỐI LƯỢNG SAN NỀN
+SANNENPRO 2.3: TÍNH KHỐI LƯỢNG SAN NỀN
 
 CÀI ĐẶT
 - Giải nén, giữ nguyên thư mục SanNenPro. Không cần cài Python.
@@ -20,6 +20,13 @@ SỬ DỤNG
 2. Nhập cao độ thiết kế, bước lưới, hệ số K.
 3. Có taluy thì nhập hệ số mái đào, mái đắp (ví dụ 1 và 1.5). Để trống là không tính.
 4. Bấm CHẠY, xong bấm Mở kết quả.
+
+XUẤT 3D
+- Tick "Xuất 3D" (mặc định đã bật). Kết quả có thêm:
+  SanNen_3D.html: mở bằng trình duyệt, xoay, xem màu đào đắp, kéo thanh cao độ để thử cao độ san, bấm "Cân bằng",
+  làm mặt cắt, bấm vào ô để xem khối lượng.
+  SanNen_3D.ifc: mở bằng Navisworks (Open hoặc Append) để kiểm tra va chạm với mô hình khác; Revit dùng Link IFC.
+  SanNen_TIN.xml: LandXML cho Civil 3D.
 
 DÙNG TRONG AUTOCAD
 1. Mở SanNenPro.exe một lần.

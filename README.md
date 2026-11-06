@@ -4,11 +4,15 @@ Tính khối lượng san nền từ DWG/DXF. Đọc điểm cao độ và ranh 
 
 ![Mặt bằng đào đắp của khu đất mẫu](docs/preview.png)
 
-**[Tải bản Windows 2.2 (99 MB)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.2.zip)** · [Trang giới thiệu, có video](https://huyhoang31897-stack.github.io/SanNenPro/) · [File mẫu](mau/)
+**[Tải bản Windows 2.3 (99 MB)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.3.zip)** · [Trang giới thiệu, có video](https://huyhoang31897-stack.github.io/SanNenPro/) · [Xem 3D mẫu](https://huyhoang31897-stack.github.io/SanNenPro/mau3d.html) · [File mẫu](mau/)
 
 Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.
 
-## Cách dùng
+## Dùng qua AI
+
+Cách dùng chính: giao việc cho trợ lý AI chạy được Python. AI đọc [AGENTS.md](AGENTS.md), hỏi những thông số còn thiếu, chạy tính và trả kết quả kèm file 3D. Đoạn prompt mẫu ở mục [Để AI chạy](#để-ai-chạy).
+
+## Cách dùng bằng giao diện
 
 1. Giải nén, chạy `SanNenPro.exe`.
 2. Bấm **Thêm**, chọn bản vẽ.
@@ -41,6 +45,9 @@ Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm **Đọc 
 | `SanNen_MatBang.dwg` | Lưới, cao độ nút, đào đắp từng ô, đường 0, chân taluy |
 | `SanNen_BaoCao.pdf` | Bản đồ đào đắp, tổng hợp, đường cong cân bằng, cảnh báo |
 | `SanNen_KetQua.json` | Toàn bộ số liệu cho AI hoặc phần mềm khác đọc |
+| `SanNen_3D.html` | Mô hình 3D xem trên trình duyệt: thanh kéo cao độ, cân bằng, mặt cắt, bấm ô xem khối lượng |
+| `SanNen_3D.ifc` | IFC4 cho Navisworks, Revit: khối đắp, đào có thuộc tính khối lượng, đúng toạ độ bản vẽ |
+| `SanNen_TIN.xml` | LandXML cho Civil 3D |
 
 ![Mặt bằng xuất ra](docs/matbang.png)
 
@@ -77,7 +84,7 @@ Mở `SanNenPro.exe` một lần, dùng `APPLOAD` nạp `sannen.lsp`. Lệnh `SA
 
 Trợ lý AI chạy được Python có thể làm từ đầu đến cuối mà không cần mở giao diện. Tài liệu cho AI ở [AGENTS.md](AGENTS.md): cách cài, quy trình, tham số, mã thoát, cấu trúc kết quả JSON. Máy không có AutoCAD thì đưa bản vẽ dạng DXF.
 
-Điền thông số rồi dán đoạn này cho AI cùng file bản vẽ:
+Điền thông số rồi dán đoạn này cho AI cùng file bản vẽ. AI mặc định xuất cả mô hình 3D:
 
 ```text
 Dùng tool SanNenPro tại https://github.com/huyhoang31897-stack/SanNenPro
@@ -113,6 +120,7 @@ python sannen.py "ban ve.dwg" --td -0.6 --step 5 --k 1.15
 python sannen.py a.dwg b.dwg --td 2.5 --taluy-dao 1 --taluy-dap 1.5 --boc 0.3 --mai-ho 0.5 --dai-coc 20 --out KetQua
 python sannen.py "ban ve.dwg" --list-layers
 python sannen.py "ban ve.dwg" --td 2.5 --json --no-dwg
+python sannen.py "ban ve.dwg" --td 2.5 --3d
 python test_sannen.py
 ```
 

@@ -2,6 +2,8 @@
 
 Tài liệu này dành cho trợ lý AI (Claude, ChatGPT, Copilot...) hoặc script tự động chạy `sannen.py`. Người dùng thường xem `README.md`.
 
+Người dùng chính của tool là AI: người dùng mô tả việc cần làm bằng lời, AI chạy lệnh và báo kết quả. Giao diện chỉ dùng khi cần thao tác tay.
+
 ## Việc AI được làm và không được làm
 
 - Không sửa file bản vẽ đầu vào. Chương trình chỉ đọc, kết quả ghi vào thư mục `--out`.
@@ -39,14 +41,14 @@ python test_sannen.py                                     # dòng cuối phải 
    python sannen.py "ban ve.dxf" --td 2.5 --step 5 --k 1.15 \
      --layer pts=CAO_DO --layer bdy=RANH \
      --taluy-dao 1 --taluy-dap 1.5 --boc 0.3 \
-     --mai-ho 0.5 --dai-coc 20 --json --out KetQua
+     --mai-ho 0.5 --dai-coc 20 --3d --json --out KetQua
    ```
 
-   Với `--json`, stdout chỉ có JSON, nhật ký ra stderr.
+   Với `--json`, stdout chỉ có JSON, nhật ký ra stderr. Mặc định luôn thêm `--3d`, trừ khi người dùng không cần mô hình 3D.
 
 3. Đọc mã thoát và JSON, xem bảng dưới.
 
-4. Trả cho người dùng: tổng khối lượng, đất thừa hoặc thiếu, các `warnings`, `errors`, `fixed`, và đường dẫn file trong `files`.
+4. Trả cho người dùng: tổng khối lượng, đất thừa hoặc thiếu, các `warnings`, `errors`, `fixed`, và đường dẫn file trong `files`. Có `--3d` thì nhắc người dùng mở `SanNen_3D.html` bằng trình duyệt để xem.
 
 Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung, mỗi polyline ranh giới là một khu.
 
@@ -74,6 +76,7 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | `--use-grid` | | Dùng lưới và nhãn HML trong bản vẽ để đối chiếu |
 | `--no-fix-ranh` | | Không tự cắt chồng lấn, lấp khe hở |
 | `--config` | | File JSON, xem `config_mau.json`: cao độ từng khu, mặt nghiêng, mái riêng từng khu |
+| `--3d` | | Xuất `SanNen_3D.html`, `SanNen_3D.ifc`, `SanNen_TIN.xml` |
 | `--json`, `--no-dwg`, `--out` | | Xuất JSON ra stdout, bỏ DWG, thư mục kết quả |
 
 ## Layer
@@ -105,11 +108,22 @@ Có ở stdout khi dùng `--json`, luôn lưu tại `<out>/SanNen_KetQua.json`.
 
 `surplus_tin_m3` = đào + taluy đào + hố móng + cọc − K × (đắp + taluy đắp). Đất bóc phong hoá không tính vào phần dùng lại.
 
+## File 3D
+
+| File | Mở bằng | Nội dung |
+|---|---|---|
+| `SanNen_3D.html` | Trình duyệt bất kỳ, cả điện thoại | Mặt đất, mặt thiết kế tô màu đào đắp, taluy, hố móng, cọc. Thanh kéo cao độ san tính lại đào đắp ngay, nút Cân bằng, mặt cắt, bấm ô xem khối lượng |
+| `SanNen_3D.ifc` | Navisworks: Open hoặc Append. Revit: Insert > Link IFC | IFC4. Khối đắp, khối đào từng khu có thuộc tính khối lượng, mặt đất, mặt thiết kế, mái taluy, hố móng, cọc. Toạ độ thật của bản vẽ, đơn vị m |
+| `SanNen_TIN.xml` | Civil 3D: Insert > LandXML | Mặt TIN hiện trạng và thiết kế |
+
+Thanh kéo trong file HTML tính lại phần trong ranh; taluy chỉ đúng ở cao độ thiết kế gốc.
+
 ## Dùng trong Python
 
 ```python
 import sannen
 cfg = dict(sannen.DEFAULTS, td=2.5, k=1.15, strip=0.3, taluy_cut=1.0, taluy_fill=1.5)
+cfg["export_3d"] = True
 r = sannen.run(["ban ve.dxf"], cfg, out="KetQua", no_dwg=True)
 print(r["summary"]["totals"])
 ```

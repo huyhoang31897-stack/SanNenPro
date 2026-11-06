@@ -1730,6 +1730,8 @@ def write_pdf(path, zones, cfg, K, bal, Q, T=None, X=None):
     from matplotlib.backends.backend_pdf import PdfPages
     from matplotlib.collections import PolyCollection, LineCollection
     from matplotlib.colors import TwoSlopeNorm
+    import logging
+    logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
     plt.rcParams["font.family"] = ["Arial", "DejaVu Sans"]
     polys, vals = [], []
     for z in zones:

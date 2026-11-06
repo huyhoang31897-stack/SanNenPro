@@ -9,3 +9,5 @@ build/
 *.bak
 !mau/*.dxf
 !mau/*.dwg
+build/
+*.spec
