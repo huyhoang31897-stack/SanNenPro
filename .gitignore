@@ -7,3 +7,5 @@ build/
 *.dwg
 *.dxf
 *.bak
+!mau/*.dxf
+!mau/*.dwg
