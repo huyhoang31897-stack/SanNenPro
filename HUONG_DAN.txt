@@ -8,7 +8,9 @@ THỬ NHANH
 - Thư mục Mau có sẵn file "Khu dat mau.dxf". Chọn file này, nhập cao độ thiết kế -0.6 rồi bấm CHẠY.
 
 CHUẨN BỊ BẢN VẼ
-- Cao độ tự nhiên: TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ.
+- Cao độ tự nhiên: TEXT, MTEXT, POINT có Z, block có thuộc tính cao độ, hoặc đường đồng mức
+  (polyline có cao độ, layer tên có chữ "dong muc" hoặc "contour").
+  Khu vượt ra ngoài vùng điểm đo vẫn tính đủ, cao độ kéo dài từ điểm ngoài cùng và có cảnh báo để đo bổ sung.
 - Ranh giới: polyline kín, mỗi khu một polyline.
 - Cao độ thiết kế: nhập tay nếu san phẳng. Mặt chỗ cao chỗ thấp thì đặt TEXT cao độ thiết kế trên layer riêng
   và để trống ô cao độ thiết kế: chương trình dựng mặt TIN thiết kế, tính đào đắp chính xác theo mặt đó,

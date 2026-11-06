@@ -27,7 +27,7 @@ Muốn thử ngay: chọn file trong thư mục `Mau`, nhập cao độ thiết 
 
 | Dữ liệu | Dạng |
 |---|---|
-| Cao độ tự nhiên | TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ |
+| Cao độ tự nhiên | TEXT, MTEXT, POINT có Z, block có thuộc tính cao độ, hoặc đường đồng mức (polyline có cao độ) |
 | Ranh giới | Polyline kín, mỗi khu một polyline |
 | Cao độ thiết kế | Nhập tay nếu san phẳng. Mặt chỗ cao chỗ thấp: TEXT cao độ thiết kế trên layer riêng, để trống ô cao độ. Chương trình dựng mặt TIN thiết kế, tính đúng theo mặt đó và báo cần nâng hay hạ cả mặt bao nhiêu để cân bằng |
 | Đường gãy, nếu có | Line hoặc polyline, tên layer có chữ `break` hoặc `duong gay` |

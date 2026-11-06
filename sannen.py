@@ -59,6 +59,7 @@ DEFAULTS = {
     "layer_bdy": "TL-Ranhgioi",  # ranh giới khu vực
     "layer_grid": "TL-Luoi",     # lưới có sẵn (khi --use-grid)
     "layer_brk": "TL-Breakline", # đường gãy
+    "layer_cnt": "TL-DongMuc",   # đường đồng mức địa hình (polyline có cao độ)
     "auto_layer": True,   # không thấy layer khai báo thì tự nhận
     "fix_bdy": True,      # tự cắt chồng lấn, lấp khe hở giữa các khu
     "taluy_cut": None,    # hệ số mái đào m (1:m); None = không tính
@@ -179,6 +180,7 @@ class Source:
     labels: list = field(default_factory=list)  # nhãn ô HML
     nodes: dict = field(default_factory=dict)   # cao độ nút HML
     brk: list = field(default_factory=list)     # đường gãy [[x,y,z],...]
+    cnt: list = field(default_factory=list)     # đường đồng mức [[x,y,z],...]
     noslope: list = field(default_factory=list) # đường không làm taluy
     pits: list = field(default_factory=list)    # (Polygon, cao độ đáy)
     piles: list = field(default_factory=list)   # (x, y, bán kính)
@@ -294,6 +296,12 @@ def norm(s):
     return "".join(c for c in s if unicodedata.category(c) != "Mn").lower()
 
 
+def contour_lines(lines):
+    """Đường đồng mức: mỗi đường một cao độ; layer phải có ít nhất 2 cao độ khác nhau (kể cả cao độ 0)."""
+    q = [l for l in lines if len(l) >= 2 and np.ptp([v[2] for v in l]) < 1e-6]
+    return q if len({round(l[0][2], 3) for l in q}) >= 2 else []
+
+
 def pick_layers(raw, cfg):
     """Dùng layer khai báo nếu có dữ liệu; nếu không thì tự nhận theo tên và nội dung."""
     def score_pts(l, a):
@@ -343,7 +351,14 @@ def pick_layers(raw, cfg):
     ns = cfg["layer_noslope"] if cfg["layer_noslope"] in raw["lines"] or cfg["layer_noslope"] in closed else None
     if ns is None and cfg["auto_layer"]:
         ns = next((l for l in list(raw["lines"]) + list(closed) if re.search(r"khong.?taluy|no.?slope|tuong.?chan|retain", norm(l))), None)
-    return dict(pts=pts, tk=tk, bdy=bdy, brk=brk, pit=pit, pile=pile, noslope=ns)
+    const_z = contour_lines
+    cnt = cfg["layer_cnt"] if const_z(raw["lines"].get(cfg["layer_cnt"], []) + raw["closed"].get(cfg["layer_cnt"], [])) else None
+    if cnt is None and cfg["auto_layer"]:
+        used = {tk, bdy, brk, pit, ns}
+        cand = [l for l in set(raw["lines"]) | set(closed) if l not in used and re.search(r"dong.?muc|contour|\bdm\b|dia.?hinh|topo", norm(l))]
+        cand = [l for l in cand if len(const_z(raw["lines"].get(l, []) + raw["closed"].get(l, []))) >= 3]
+        cnt = max(cand, key=lambda l: len(raw["lines"].get(l, [])) + len(raw["closed"].get(l, [])), default=None)
+    return dict(pts=pts, tk=tk, bdy=bdy, brk=brk, cnt=cnt, pit=pit, pile=pile, noslope=ns)
 
 
 def to_poly(ring):
@@ -366,6 +381,8 @@ def make_source(path, raw, cfg):
         src.grids = [p for p in map(to_poly, raw["closed"][cfg["layer_grid"]]) if p is not None]
     if L["brk"]:
         src.brk = raw["lines"].get(L["brk"], []) + [r + r[:1] for r in raw["closed"].get(L["brk"], [])]
+    if L.get("cnt"):
+        src.cnt = contour_lines(raw["lines"].get(L["cnt"], []) + [r + r[:1] for r in raw["closed"].get(L["cnt"], [])])
     src.labels, src.nodes = raw["labels"], raw["nodes"]
     if L["noslope"]:
         src.noslope = raw["lines"].get(L["noslope"], []) + [r + r[:1] for r in raw["closed"].get(L["noslope"], [])]
@@ -383,8 +400,10 @@ def make_source(path, raw, cfg):
         x0, y0, x1, y1 = keep.bounds
         for name in ("pts", "tk"):
             setattr(src, name, [r for r in getattr(src, name) if x0 <= r[0] <= x1 and y0 <= r[1] <= y1])
+        src.cnt = [q for q in src.cnt if any(x0 <= v[0] <= x1 and y0 <= v[1] <= y1 for v in q)]
     log(f"  {src.path.name}: {len(src.pts)} điểm đo [{L['pts']}], {len(src.bdys)} ranh giới [{L['bdy']}], "
         f"{len(src.tk)} điểm TK [{L['tk']}], {len(src.brk)} đường gãy [{L['brk']}], {len(src.grids)} ô lưới"
+        + (f", {len(src.cnt)} đường đồng mức [{L['cnt']}]" if src.cnt else "")
         + (f", {len(src.pits)} hố móng [{L['pit']}]" if src.pits else "") + (f", {len(src.piles)} cọc [{L['pile']}]" if src.piles else "")
         + (f", {len(src.noslope)} đoạn không taluy [{L['noslope']}]" if src.noslope else ""))
     return src
@@ -433,6 +452,22 @@ def layer_report(paths):
 
 
 # ---------------------------------------------------------------- Mặt TIN
+def hull_extrap(q, edges):
+    """Cao độ ngoài vùng điểm: lấy tại điểm gần nhất trên biên vùng, nội suy dọc cạnh biên (mặt liên tục)."""
+    A, B, za, zb = edges
+    d = B - A
+    L2 = np.maximum((d ** 2).sum(axis=1), 1e-12)
+    out = np.empty(len(q))
+    for s in range(0, len(q), 4000):   # chia khối cho đỡ tốn bộ nhớ
+        qq = q[s:s + 4000]
+        t = np.clip(((qq[:, None, :] - A[None]) * d[None]).sum(axis=2) / L2[None], 0, 1)
+        P = A[None] + t[..., None] * d[None]
+        k = ((qq[:, None, :] - P) ** 2).sum(axis=2).argmin(axis=1)
+        r = np.arange(len(qq))
+        out[s:s + 4000] = za[k] + t[r, k] * (zb[k] - za[k])
+    return out
+
+
 class TIN:
     def __init__(self, pts: np.ndarray, breaks=None):
         pts = np.asarray(pts, float)
@@ -445,6 +480,11 @@ class TIN:
         self.z = P[:, 2]
         self.tri = Delaunay(self.xy)
         self.tree = cKDTree(self.xy)
+        hv = self.tri.convex_hull            # các cạnh biên (cặp chỉ số đỉnh)
+        A, B = self.xy[hv[:, 0]], self.xy[hv[:, 1]]
+        self._edges = (A, B, self.z[hv[:, 0]], self.z[hv[:, 1]])
+        from shapely.geometry import MultiPoint
+        self.hull = MultiPoint([tuple(p) for p in self.xy + self.off]).convex_hull
 
     def _conform(self, pts, P, breaks):
         """TIN ép theo đường gãy: chèn điểm giữa đến khi mỗi đoạn là cạnh tam giác."""
@@ -501,11 +541,12 @@ class TIN:
         return out
 
     def filled(self, xy):
+        """Như __call__, ngoài vùng điểm thì kéo dài liên tục từ biên vùng."""
         z = self(xy)
         miss = np.isnan(z)
         if miss.any():
             q = np.atleast_2d(np.asarray(xy, float))[miss] - self.off
-            z[miss] = self.z[self.tree.query(q)[1]]
+            z[miss] = hull_extrap(q, self._edges)
         return z, miss
 
     def triangles(self):
@@ -518,22 +559,7 @@ class Design:
         self.kind, self.kw = kind, kw
         if kind == "tin":
             self.tin = TIN(kw["pts"])
-            from shapely.geometry import MultiPoint
-            a = np.asarray(kw["pts"], float)
-            self.hull = MultiPoint([tuple(p) for p in a[:, :2]]).convex_hull
-            hb = np.array(self.hull.exterior.coords)
-            self._edges = (hb[:-1], hb[1:], self.tin.filled(hb[:-1])[0], self.tin.filled(hb[1:])[0])
-
-    def _outside(self, q):
-        """Ngoài vùng điểm thiết kế: lấy cao độ tại điểm gần nhất trên biên vùng, nội suy dọc cạnh biên (mặt liên tục)."""
-        A, B, za, zb = self._edges
-        d = B - A
-        L2 = np.maximum((d ** 2).sum(axis=1), 1e-12)
-        t = np.clip(((q[:, None, :] - A[None]) * d[None]).sum(axis=2) / L2[None], 0, 1)
-        P = A[None] + t[..., None] * d[None]
-        k = ((q[:, None, :] - P) ** 2).sum(axis=2).argmin(axis=1)
-        r = np.arange(len(q))
-        return za[k] + t[r, k] * (zb[k] - za[k])
+            self.hull = self.tin.hull
 
     def __call__(self, xy):
         q = np.atleast_2d(np.asarray(xy, float))
@@ -542,11 +568,7 @@ class Design:
         if self.kind == "plane":
             k = self.kw
             return k["z0"] + (q[:, 0] - k["x0"]) * k.get("ix", 0) + (q[:, 1] - k["y0"]) * k.get("iy", 0)
-        z = self.tin(q)
-        miss = np.isnan(z)
-        if miss.any():
-            z[miss] = self._outside(q[miss])
-        return z
+        return self.tin.filled(q)[0]
 
     def outside_area(self, poly):
         """Diện tích phần khu nằm ngoài vùng điểm thiết kế (m2)."""
@@ -752,6 +774,19 @@ def ear_clip(p):
     return out
 
 
+def fine_split(p, size):
+    """Chia đa giác thành các mảnh nhỏ theo lưới vuông cạnh size."""
+    x0, y0, x1, y1 = p.bounds
+    if max(x1 - x0, y1 - y0) <= size:
+        return no_holes(p)
+    out = []
+    for x in np.arange(x0, x1, size):
+        for y in np.arange(y0, y1, size):
+            g = p.intersection(box(x, y, x + size, y + size))
+            out += [r for q in getattr(g, "geoms", [g]) if q.geom_type == "Polygon" for r in no_holes(q) if r.area >= 1e-9]
+    return out
+
+
 def no_holes(p):
     """Tách đa giác có lỗ thành các đa giác không lỗ bằng đường cắt qua lỗ."""
     if not p.interiors:
@@ -780,32 +815,51 @@ class Overlay:
             dtree = STRtree(dpol)
             dhull = design.hull
         xy, zz, own, cover = [], [], [], {}
+        self.outside = 0.0      # diện tích nằm ngoài vùng điểm đo (m2)
+        polys_ok = lambda g: [p for q in getattr(g, "geoms", [g]) if q.geom_type == "Polygon" for p in no_holes(q) if p.area >= 1e-9]
+
+        def by_design(parts):
+            """Cắt thêm theo tam giác thiết kế; phần ngoài vùng điểm thiết kế chia mịn."""
+            if dt is None:
+                return parts
+            sub = []
+            for part in parts:
+                for di in dtree.query(part):
+                    sub += polys_ok(dpol[di].intersection(part))
+                rest = part.difference(dhull)
+                for q in polys_ok(rest):
+                    sub += fine_split(q, fine)
+            return sub
+
+        def emit(part, ci, co):
+            for tr in ear_clip(list(part.exterior.coords[:-1])):
+                t = np.array(tr)
+                xy.append(t)
+                zz.append((t - tin.off) @ co[:2] + co[2] if co is not None else tin.filled(t)[0])
+                own.append(ci)
+
         # hệ số mặt phẳng z = a x + b y + c cho từng tam giác (toạ độ cục bộ)
         P = V - tin.off
         for ci, c in enumerate(cells):
             pg = c["poly"]
+            fine = max(0.5, math.sqrt(pg.area) / 5)
             got = 0.0
             for ti in tree.query(pg):
-                g = polys[ti].intersection(pg)
-                parts = [p for p in getattr(g, "geoms", [g]) if p.geom_type == "Polygon" and p.area >= 1e-9]
-                if dt is not None:
-                    sub = []
-                    for part in parts:
-                        for di in dtree.query(part):
-                            h = dpol[di].intersection(part)
-                            sub += [p for p in getattr(h, "geoms", [h]) if p.geom_type == "Polygon" and p.area >= 1e-9]
-                        rest = part.difference(dhull)
-                        sub += [p for q in getattr(rest, "geoms", [rest]) if q.geom_type == "Polygon" for p in no_holes(q) if p.area >= 1e-9]
-                    parts = sub
+                parts = by_design(polys_ok(polys[ti].intersection(pg)))
+                if not parts:
+                    continue
+                co = np.linalg.solve(np.c_[P[ti], np.ones(3)], Z[ti])
                 for part in parts:
                     got += part.area
-                    A = np.c_[P[ti], np.ones(3)]
-                    co = np.linalg.solve(A, Z[ti])
-                    for tr in ear_clip(list(part.exterior.coords[:-1])):
-                        t = np.array(tr)
-                        xy.append(t)
-                        zz.append((t - tin.off) @ co[:2] + co[2])
-                        own.append(ci)
+                    emit(part, ci, co)
+            # phần ô nằm ngoài vùng điểm đo: cao độ đất kéo dài từ biên vùng, chia mịn
+            out = pg.difference(tin.hull)
+            if out.area >= 1e-6:
+                self.outside += out.area
+                for q in polys_ok(out):
+                    for part in by_design(fine_split(q, fine)):
+                        got += part.area
+                        emit(part, ci, None)
             cover[ci] = got
         self.xy = np.array(xy)
         self.z = np.array(zz)
@@ -1292,13 +1346,24 @@ def quality(zones, pts, chk, cfg, tin, T, notes, X=None):
         ok = tin.brk_missing == 0
         add("OK" if ok else "CẢNH BÁO", "Đường gãy", f"{cfg['_brk']} đường, thêm {tin.brk_added} điểm phụ vào TIN"
             + ("" if ok else f"; {tin.brk_missing} đoạn chưa ép được thành cạnh TIN"))
+    if cfg.get("_cnt"):
+        V, Z = tin.triangles()
+        U = unary_union([z["poly"] for z in zones])
+        flat = [Polygon(v) for v, zz in zip(V, Z) if np.ptp(zz) < 1e-6]
+        fa = sum(p.intersection(U).area for p in flat) if flat else 0.0
+        pf = 100 * fa / U.area
+        add("OK" if pf < 5 else "CẢNH BÁO", "Đồng mức", f"{cfg['_cnt']} đường đồng mức dùng làm đường gãy"
+            + (f"; {fa:.0f} m2 ({pf:.1f}%) là tam giác phẳng nằm giữa cùng một đường đồng mức (đỉnh đồi, đáy trũng), nên bổ sung điểm cao độ ở đó" if pf >= 0.5 else ""))
     for t in notes:
         add("ĐÃ SỬA", "Ranh giới", t)
     tree = cKDTree(pts[:, :2])
     for z in zones:
         n = z["name"]
-        ex = sum(c["extrap"] for c in z["cells"])
-        add("OK" if ex == 0 else "CẢNH BÁO", n, f"{ex} đỉnh ô nằm ngoài vùng phủ TIN")
+        out = z["poly"].difference(tin.hull).area
+        pa = 100 * out / z["poly"].area
+        add("OK" if pa < 0.5 else "CẢNH BÁO" if pa < 5 else "LỖI", n,
+            "Toàn khu nằm trong vùng điểm đo" if out < 0.01 else
+            f"{out:.1f} m2 ({pa:.1f}% diện tích khu) nằm ngoài vùng điểm đo, cao độ tự nhiên ở đó kéo dài từ các điểm đo ngoài cùng; nên đo bổ sung")
         dA = z["area"] - z["poly"].area
         add("OK" if abs(dA) < 0.5 else "LỖI", n, f"Tổng diện tích ô {z['area']:.2f} m2, ranh giới {z['poly'].area:.2f} m2, lệch {dA:+.2f} m2")
         far = [c["name"] for c in z["cells"]
@@ -1911,21 +1976,22 @@ def run(inputs, cfg, out=None, no_dwg=False):
 
     log(f"SanNenPro {__version__}\n1. Đọc bản vẽ")
     sources = read_sources(inputs, cfg)
-    pts = dedupe([r for s in sources for r in s.pts])
+    cnt = [q for s in sources for q in s.cnt]
+    pts = dedupe([r for s in sources for r in s.pts] + [list(v) for q in cnt for v in q])
     if len(pts) < 3:
         raise SystemExit("Không tìm thấy điểm cao độ. Hãy chọn đúng layer cao độ tự nhiên.")
     if not any(s.bdys for s in sources):
         raise SystemExit("Không tìm thấy ranh giới (polyline kín). Hãy chọn đúng layer ranh giới.")
     brk, seen = [], set()
     for s in sources:
-        for line in s.brk:
+        for line in s.brk + s.cnt:
             k = tuple(np.round(np.array(line).ravel(), 3))
             if k not in seen:
                 seen.add(k)
                 brk.append(line)
-    cfg = dict(cfg, _brk=len(brk))
+    cfg = dict(cfg, _brk=len(brk), _cnt=len(cnt))
 
-    log(f"2. Dựng TIN từ {len(pts)} điểm, {len(brk)} đường gãy và tính khối lượng")
+    log(f"2. Dựng TIN từ {len(pts)} điểm, {len(brk)} đường gãy" + (f" (gồm {len(cnt)} đường đồng mức)" if cnt else "") + " và tính khối lượng")
     tin = TIN(pts, brk or None)
     chk = check_points(pts)
     zones, notes = build_zones(sources, cfg)
@@ -2035,7 +2101,7 @@ def main(argv=None):
     ap.add_argument("--dai-coc", type=float, dest="pile_len", help="chiều dài cọc khoan nhồi (m)")
     ap.add_argument("--d-coc", type=float, dest="pile_dia", help="đường kính cọc khi tim cọc là block (m)")
     ap.add_argument("--layer", action="append", default=[], metavar="LOAI=TEN",
-                    help="chỉ định layer: pts, tk, bdy, brk, pit, pile, noslope; lặp lại được")
+                    help="chỉ định layer: pts, tk, bdy, brk, cnt (đồng mức), pit, pile, noslope; lặp lại được")
     ap.add_argument("--3d", action="store_true", dest="export_3d", help="xuất mô hình 3D: DWG solid cho AutoCAD, HTML, IFC (Navisworks, Revit), LandXML (Civil 3D)")
     ap.add_argument("--list-layers", action="store_true", help="in JSON các layer và layer tự nhận, không tính")
     ap.add_argument("--json", action="store_true", help="in JSON kết quả ra stdout, nhật ký chuyển sang stderr")

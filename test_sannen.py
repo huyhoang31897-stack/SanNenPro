@@ -248,4 +248,40 @@ Vf, Vc, _, _ = mer.volumes(zd[0] + dlt - mer.z)
 check("Cân bằng TK không phẳng: đào - K x đắp", float(Vc.sum() - 1.1 * Vf.sum()), 0, 0.5)
 dl2 = sn.balance_full(mer, 1.1, None, 0.0)
 check("Cân bằng TK không phẳng: hai hàm cùng kết quả", dl2, dlt, 1e-3)
+
+# 15. cao độ tự nhiên
+# 15a. khu vượt ra ngoài vùng điểm đo: trước đây phần ngoài bị bỏ sót khối lượng
+gp = grid_pts(0, 80, -10, 60, 8, lambda x, y: 0.02 * x)
+z = zone(box(0, 0, 100, 50), 2.0, cfg)
+sn.compute([z], sn.TIN(gp), cfg)
+check("Khu vượt vùng điểm đo: V đắp TIN (kéo dài từ biên)", z["tvf"], 50 * (80 * 2.0 - 0.01 * 80 ** 2) + 20 * 50 * (2.0 - 1.6), 1e-3)
+check("Khu vượt vùng điểm đo: diện tích ngoài (m2)", z["ov"].outside, 1000, 1e-6)
+check("Khu vượt vùng điểm đo: lưới ô = TIN", z["vf"], z["tvf"], 1e-3)
+# 15b. chỉ có đường đồng mức (polyline có cao độ), không có điểm: mặt nghiêng z = 0,02x, đọc từ DXF
+d = Path(tempfile.mkdtemp())
+doc = ezdxf.new("R2013"); m = doc.modelspace()
+for l in ("DUONG DONG MUC", "RANH"):
+    doc.layers.add(l)
+for x in range(-10, 121, 10):
+    pl = m.add_lwpolyline([(x, -10), (x, 25), (x, 60)], dxfattribs={"layer": "DUONG DONG MUC"})
+    pl.dxf.elevation = 0.02 * x + 1.0
+m.add_lwpolyline([(0, 0), (100, 0), (100, 50), (0, 50)], close=True, dxfattribs={"layer": "RANH"})
+f = d / "dong muc.dxf"; doc.saveas(f)
+r = sn.run([f], dict(sn.DEFAULTS, td=2.5, k=1.0), d / "out", no_dwg=True)
+check("Chỉ có đồng mức: V đắp TIN", r["zones"][0]["tvf"], 50 * (75 * 1.5 - 0.01 * 75 ** 2), 1e-3)
+# 15c. điểm đo kèm đồng mức: đồng mức ép cạnh TIN, sườn núi chữ V (đỉnh đường đồng mức gãy góc)
+doc = ezdxf.new("R2013"); m = doc.modelspace()
+for l in ("TL-CDTN", "TL-DongMuc", "RANH"):
+    doc.layers.add(l)
+for k in range(0, 6):     # z = |x - 50| * 0.04 + ..., đồng mức hình chữ V quanh rãnh x = 50
+    zc = 0.4 * k
+    pl = m.add_lwpolyline([(50 - 10 * k, -10), (50 - 10 * k, 60)], dxfattribs={"layer": "TL-DongMuc"}); pl.dxf.elevation = zc
+    if k:
+        pl = m.add_lwpolyline([(50 + 10 * k, -10), (50 + 10 * k, 60)], dxfattribs={"layer": "TL-DongMuc"}); pl.dxf.elevation = zc
+for x, y in ((25, 25), (75, 25)):
+    m.add_text(f"{abs(x - 50) * 0.04:.3f}", dxfattribs={"layer": "TL-CDTN", "insert": (x, y)})
+m.add_lwpolyline([(0, 0), (100, 0), (100, 50), (0, 50)], close=True, dxfattribs={"layer": "RANH"})
+f = d / "rach.dxf"; doc.saveas(f)
+r = sn.run([f], dict(sn.DEFAULTS, td=2.0, k=1.0), d / "out2", no_dwg=True)
+check("Đồng mức + điểm, rãnh chữ V: V đắp TIN", r["zones"][0]["tvf"], 50 * 2 * (50 * 2.0 - 0.02 * 50 ** 2), 1e-3)
 print("TONG:", sum(R), "/", len(R), flush=True)

@@ -60,6 +60,12 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | 2 | Sai đầu vào: thiếu file, thiếu điểm cao độ, thiếu ranh giới, thiếu cao độ thiết kế | Đọc stderr, sửa tham số hoặc hỏi người dùng |
 | 3 | Tính xong nhưng có LỖI trong kiểm tra số liệu | Báo `errors` trước khi dùng số |
 
+## Mặt đất tự nhiên
+
+- Dựng TIN từ điểm cao độ, đường gãy và đường đồng mức. Trong mỗi tam giác mặt đất phẳng, khối lượng TIN tính chính xác theo TIN đó.
+- Phần khu nằm ngoài vùng điểm đo: cao độ kéo dài liên tục từ các điểm ngoài cùng, vẫn tính đủ diện tích. Kiểm tra báo diện tích phần này: dưới 0,5% là OK, dưới 5% là CẢNH BÁO, từ 5% là LỖI (mã thoát 3). Gặp CẢNH BÁO hoặc LỖI thì báo người dùng nên đo bổ sung.
+- Có đồng mức: kiểm tra báo diện tích tam giác phẳng (cả 3 đỉnh cùng một đường đồng mức, thường ở đỉnh đồi, đáy trũng). Nhiều thì đề nghị bổ sung điểm cao độ ở đó.
+
 ## Mặt thiết kế
 
 - Phẳng: `--td`, hoặc cao độ từng khu trong `--config`.
@@ -78,7 +84,7 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | `--mai-ho` | m | Hệ số mái hố móng 1:m, 0 là thành đứng |
 | `--day-ho` | m | Cao độ đáy hố khi trong polyline không có TEXT cao độ |
 | `--dai-coc`, `--d-coc` | m | Dài cọc khoan nhồi; đường kính khi tim cọc là block |
-| `--layer LOAI=TEN` | | LOAI: `pts`, `tk`, `bdy`, `brk`, `noslope`, `pit`, `pile`, `grid` |
+| `--layer LOAI=TEN` | | LOAI: `pts`, `tk`, `bdy`, `brk`, `cnt`, `noslope`, `pit`, `pile`, `grid` |
 | `--use-grid` | | Dùng lưới và nhãn HML trong bản vẽ để đối chiếu |
 | `--no-fix-ranh` | | Không tự cắt chồng lấn, lấp khe hở |
 | `--config` | | File JSON, xem `config_mau.json`: cao độ từng khu, mặt nghiêng, mái riêng từng khu |
@@ -93,6 +99,7 @@ Nhiều file: truyền nhiều đường dẫn, điểm đo được gộp chung
 | `tk` | `TL-CDTK` | Cao độ thiết kế dạng điểm. Các điểm khác cao độ thì dựng TIN thiết kế; chỗ nằm ngoài vùng điểm lấy cao độ kéo dài từ biên vùng điểm và có cảnh báo |
 | `bdy` | `TL-Ranhgioi` | Polyline kín, mỗi khu một polyline |
 | `brk` | `TL-Breakline` | Line, polyline có Z; Z = 0 thì lấy cao độ mặt đất |
+| `cnt` | `TL-DongMuc` | Đường đồng mức: polyline mỗi đường một cao độ (elevation). Dùng làm đường gãy và điểm cao độ; dùng được khi bản vẽ chỉ có đồng mức. Tự nhận layer tên có chữ `dong muc`, `contour`, `dia hinh` |
 | `noslope` | `TL-KhongTaluy` | Line dọc cạnh không làm mái: tường chắn, ranh đất |
 | `pit` | `TL-HoMong` | Polyline kín, TEXT cao độ đáy đặt bên trong |
 | `pile` | `TL-Coc` | CIRCLE đúng đường kính, hoặc block kèm `--d-coc` |
