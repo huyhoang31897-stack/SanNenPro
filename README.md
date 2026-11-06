@@ -2,7 +2,9 @@
 
 Tool tính khối lượng san nền bằng Python, đọc từ DWG/DXF và xuất Excel, DWG, PDF.
 
-**Tải bản chạy ngay (không cần Python):** vào mục [Releases](https://github.com/huyhoang31897-stack/SanNenPro/releases/latest), tải `SanNenPro_v2.0.zip`, giải nén, chạy `SanNenPro.exe`, xem `HUONG_DAN.txt`.
+**[Tải bản chạy ngay cho Windows (99 MB, không cần Python)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip)**
+
+Giải nén, chạy `SanNenPro.exe`, xem `HUONG_DAN.txt`. Đọc DWG cần máy có AutoCAD, không có thì lưu sang DXF. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.
 
 ## Chạy từ mã nguồn
 Chạy `CAI_DAT.bat` một lần (cần Python 3.10 trở lên), rồi:
