@@ -1,89 +1,65 @@
-<p align="center"><img src="docs/preview.png" alt="SanNenPro" width="100%"></p>
+# SanNenPro
 
-<p align="center"><b>Tính khối lượng san nền trực tiếp từ bản vẽ CAD, xuất sẵn Excel, DWG và PDF.</b></p>
+Tính khối lượng san nền từ DWG/DXF. Đọc điểm cao độ và ranh giới trong bản vẽ, chia lưới ô, tính đào đắp từng ô rồi xuất Excel, DWG, PDF.
 
-<p align="center">
-  <a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip"><b>⬇ Tải cho Windows (99 MB)</b></a>
-  &nbsp;·&nbsp; Không cần cài Python
-</p>
+![Mặt bằng đào đắp của khu đất mẫu](docs/preview.png)
 
-## Tính năng
+**[Tải bản Windows 2.0 (99 MB)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip)** · [Trang giới thiệu](https://huyhoang31897-stack.github.io/SanNenPro/)
 
-| | |
-|---|---|
-| **Hai cách tính** | Lưới ô và mô hình TIN chạy song song để đối chiếu |
-| **Taluy** | Nhập hệ số mái đào, đắp; xuất khối lượng và chân taluy |
-| **Đường gãy** | TIN ép theo mép mương, bờ taluy |
-| **Cân bằng đào đắp** | Cao độ cân bằng, đường cong khối lượng, cân đối đất theo hệ số K |
-| **Ranh giới** | Hình bất kỳ, nhiều khu, tự cắt chồng lấn và lấp khe hở |
-| **Kiểm tra số liệu** | Điểm trùng, điểm dị thường, ô thiếu điểm đo, chênh lệch hai cách tính |
-| **AutoCAD** | Lệnh `SANNEN` mở tool, `SANNENKQ` chèn kết quả đúng tọa độ |
-| **Tự nhận layer** | Không cần đổi tên layer của bản vẽ |
+Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.
 
-## Hình ảnh
+## Cách dùng
 
-| Giao diện | Bản đồ đào đắp |
-|---|---|
-| ![Giao diện](docs/giaodien.png) | ![Bản đồ đào đắp](docs/bando.png) |
-
-| Mặt bằng CAD | Tổng hợp, cân bằng |
-|---|---|
-| ![Mặt bằng CAD](docs/matbang.png) | ![Tổng hợp](docs/tonghop.png) |
-
-<sub>Hình dùng khu đất mẫu giả lập.</sub>
-
-## Hướng dẫn sử dụng
-
-**Yêu cầu:** Windows. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.
-
-1. Tải file ở đầu trang, giải nén, giữ nguyên thư mục.
-2. Chạy `SanNenPro.exe`, bấm **Thêm** và chọn bản vẽ.
-3. Nhập cao độ thiết kế, bước lưới, hệ số K. Có taluy thì nhập hệ số mái (ví dụ 1 và 1,5).
+1. Giải nén, chạy `SanNenPro.exe`.
+2. Bấm **Thêm**, chọn bản vẽ.
+3. Nhập cao độ thiết kế, bước lưới, hệ số K. Có taluy thì nhập hệ số mái.
 4. Bấm **CHẠY**, xong bấm **Mở kết quả**.
 
-### Chuẩn bị bản vẽ
+![Cửa sổ SanNenPro](docs/giaodien.png)
+
+## Bản vẽ cần có
 
 | Dữ liệu | Dạng |
 |---|---|
-| Cao độ tự nhiên | TEXT số, MTEXT số, POINT có Z, block có thuộc tính cao độ |
+| Cao độ tự nhiên | TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ |
 | Ranh giới | Polyline kín, mỗi khu một polyline |
-| Cao độ thiết kế | Nhập tay, hoặc TEXT số trên layer riêng |
-| Đường gãy (nếu có) | Line, polyline trên layer có chữ `break` hoặc `duong gay` |
+| Cao độ thiết kế | Nhập tay, hoặc TEXT trên layer riêng |
+| Đường gãy, nếu có | Line hoặc polyline, tên layer có chữ `break` hoặc `duong gay` |
 
-Tool nhận sai layer thì bấm **Đọc danh sách layer** và chọn lại.
+Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm **Đọc danh sách layer** và chọn lại.
 
-### Dùng trong AutoCAD
-
-1. Mở `SanNenPro.exe` một lần.
-2. Trong AutoCAD gõ `APPLOAD`, chọn `sannen.lsp`.
-3. Gõ `SANNEN` để mở tool với bản vẽ hiện hành.
-4. Tính xong gõ `SANNENKQ` để chèn kết quả.
-
-### Kết quả
+## Kết quả
 
 | File | Nội dung |
 |---|---|
-| `SanNen_KhoiLuong.xlsx` | Tổng hợp, bảng từng khu, cân đối đất, cân bằng, taluy, kiểm tra |
-| `SanNen_MatBang.dwg` / `.dxf` | Ranh giới, lưới, cao độ nút, hatch đào đắp, đường 0, chân taluy, bảng tổng hợp |
+| `SanNen_KhoiLuong.xlsx` | Bảng từng khu, tổng hợp, cân đối đất theo K, cân bằng đào đắp, taluy, kiểm tra số liệu |
+| `SanNen_MatBang.dwg` | Lưới, cao độ nút, đào đắp từng ô, đường 0, chân taluy |
 | `SanNen_BaoCao.pdf` | Bản đồ đào đắp, tổng hợp, đường cong cân bằng, cảnh báo |
 
-File gốc không bị sửa.
+![Mặt bằng xuất ra](docs/matbang.png)
 
 ## Cách tính
 
 - **Lưới ô:** `V = S × trung bình |h|` các đỉnh ô, tách theo đường h = 0.
-- **TIN:** cắt tam giác theo ô, tích phân chính xác; đường gãy được ép thành cạnh tam giác.
-- **Taluy:** mái 1:m từ mép ranh giới ra ngoài đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m.
-- **Ranh giới:** phần chồng lấn thuộc khu đứng trước, khe hở nhập vào khu kề.
+- **TIN:** cắt tam giác theo ô và tích phân; đường gãy được ép thành cạnh tam giác.
+- **Taluy:** mái 1:m từ mép ranh giới đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m.
+- **Nhiều khu:** phần chồng lấn tính cho khu đứng trước, khe hở nhập vào khu kề.
 
-Đã kiểm thử bằng 20 bài toán có đáp số tính tay (`test_sannen.py`) và đối chiếu với HML trên 649 ô thực tế: 617 ô lệch không quá 0,02; các ô còn lại do làm tròn cao độ nút hoặc cách xử lý đỉnh có h = 0.
+## Đã kiểm tra
 
-## Giới hạn
+20 bài toán có đáp số tính tay đều đạt (`test_sannen.py`). Đối chiếu với HML trên 649 ô của một công trình thực tế, 617 ô lệch không quá 0,02. 32 ô còn lại lệch do làm tròn cao độ nút hoặc do đỉnh có h = 0.
 
-- Taluy áp dụng cho toàn bộ chu vi ngoài, chưa chọn được từng cạnh.
+## Trong AutoCAD
+
+Mở `SanNenPro.exe` một lần, dùng `APPLOAD` nạp `sannen.lsp`. Lệnh `SANNEN` mở chương trình với bản vẽ đang mở, lệnh `SANNENKQ` chèn kết quả đúng tọa độ.
+
+## Chưa làm được
+
+- Taluy tính cho cả chu vi ngoài, chưa chọn được từng cạnh.
 - Chưa tính bóc phong hoá, cọc, hầm, hố móng.
 - Cao độ cân bằng chưa gồm taluy.
-- Kết quả cần được kỹ sư kiểm tra trước khi sử dụng. Xem sheet `Kiểm tra` trong Excel.
+
+Xem sheet Kiểm tra trong file Excel và tự rà lại số liệu trước khi dùng.
 
 ## Chạy từ mã nguồn
 

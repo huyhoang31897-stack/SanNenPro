@@ -3,71 +3,107 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SanNenPro: tính khối lượng san nền từ bản vẽ CAD</title>
-<meta name="description" content="Công cụ tính khối lượng san nền từ DWG/DXF: lưới ô + TIN, taluy, đường gãy, cân bằng đào đắp. Xuất Excel, DWG, PDF.">
+<title>SanNenPro: tính khối lượng san nền từ DWG/DXF</title>
+<meta name="description" content="Đọc điểm cao độ và ranh giới trong bản vẽ, tính đào đắp theo lưới ô và TIN, xuất Excel, DWG, PDF.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="SanNenPro: tính khối lượng san nền từ bản vẽ CAD">
-<meta property="og:description" content="Lưới ô + TIN, taluy, đường gãy, cân bằng đào đắp. Xuất Excel, DWG, PDF. Không cần cài Python.">
+<meta property="og:title" content="SanNenPro: tính khối lượng san nền từ DWG/DXF">
+<meta property="og:description" content="Đọc điểm cao độ và ranh giới trong bản vẽ, tính đào đắp theo lưới ô và TIN, xuất Excel, DWG, PDF.">
 <meta property="og:url" content="https://huyhoang31897-stack.github.io/SanNenPro/">
-<meta property="og:image" content="https://huyhoang31897-stack.github.io/SanNenPro/preview.png">
+<meta property="og:image" content="https://huyhoang31897-stack.github.io/SanNenPro/preview.png?v=2">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
 <style>
-:root{--navy:#10264a;--ink:#1c2738;--mute:#5a6678;--line:#dfe5ee;--soft:#f4f7fb;--teal:#0f8f78;--bg:#fff}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 Inter,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
-header{background:var(--navy);color:#fff;padding:64px 0 72px}
-.eyebrow{color:#7fd6c2;font-weight:600;font-size:15px}
-h1{font-size:clamp(40px,8vw,64px);line-height:1.05;letter-spacing:-.02em;margin:10px 0 16px}
-.lead{font-size:clamp(18px,3vw,22px);color:#d9e7f5;max-width:640px;margin:0 0 28px}
-.btn{display:inline-block;padding:14px 22px;border-radius:8px;font-weight:700;text-decoration:none;margin:0 10px 10px 0}
-.primary{background:#7fd6c2;color:#0b2a26}.ghost{border:1px solid #ffffff55;color:#fff}
-.note{font-size:14px;color:#b9c9de;margin-top:6px}
-section{padding:52px 0;border-bottom:1px solid var(--line)}
-h2{font-size:clamp(26px,5vw,32px);letter-spacing:-.01em;line-height:1.2;margin:0 0 22px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
-.grid h3{font-size:18px;margin:0 0 4px}.grid p{margin:0;color:var(--mute);font-size:16px}
-figure{margin:0}img{max-width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:8px}
-figcaption{color:var(--mute);font-size:15px;margin-top:8px}
-.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
-ol{padding-left:22px;margin:0}li{margin-bottom:8px}
-code{background:var(--soft);padding:1px 6px;border-radius:4px;font-size:.92em}
-footer{padding:30px 0;color:var(--mute);font-size:15px}a{color:#0b6b5a}
+body{margin:0;background:#fff;color:#16191d;font:17px/1.55 Arial,"Liberation Sans",sans-serif}
+a{color:#0b4fb3}
+.sheet{position:relative;background:#212830}
+.sheet>img{display:block;width:100%;height:auto;min-height:300px;object-fit:cover;object-position:30% 50%}
+.block{border-collapse:collapse;background:#212830;color:#fff;width:440px;max-width:100%}
+.sheet .block{position:absolute;right:24px;bottom:24px;border:2px solid #fff}
+.block td{border:1px solid #fff;padding:7px 12px;font-size:15px;vertical-align:top}
+.block .name{font-size:42px;line-height:1.1;font-weight:700;padding:8px 12px}
+.block .what{color:#ffe600;font-size:18px}
+.block a{display:block;background:#ffe600;color:#16191d;font-weight:700;font-size:18px;text-align:center;text-decoration:none;padding:12px}
+.block a:hover{background:#fff}
+.block td.dl{padding:0}
+main{max-width:760px;margin:0 auto;padding:36px 20px 16px}
+h2{font-size:23px;line-height:1.25;margin:40px 0 10px}
+p{margin:0 0 12px}ol{margin:0 0 12px;padding-left:24px}ol li,ul li{margin-bottom:5px}ul{margin:0 0 12px;padding-left:22px}
+table.d{border-collapse:collapse;width:100%;margin:6px 0 14px;font-size:16px}
+table.d th,table.d td{border:1px solid #16191d;padding:7px 10px;text-align:left;vertical-align:top}
+table.d th{font-weight:700;background:#eef0f2}
+table.d td.n,table.d th.n{text-align:right;white-space:nowrap}
+figure{margin:16px 0 22px}figure img{display:block;width:100%;height:auto;border:1px solid #16191d}
+figcaption{font-size:15px;color:#4a525c;margin-top:5px}
+footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color:#4a525c}
+@media (max-width:760px){.sheet .block{position:static;width:100%;border-width:2px 0 0}.sheet>img{min-height:220px}}
 </style>
 </head>
 <body>
-<header><div class="wrap">
-<div class="eyebrow">Công cụ cho kỹ sư xây dựng</div>
-<h1>SanNenPro</h1>
-<p class="lead">Tính khối lượng san nền trực tiếp từ bản vẽ CAD, xuất sẵn Excel, DWG và PDF.</p>
-<a class="btn primary" href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip">Tải cho Windows (99 MB)</a>
-<a class="btn ghost" href="https://github.com/huyhoang31897-stack/SanNenPro">Xem trên GitHub</a>
-<div class="note">Không cần cài Python. Đọc DWG cần máy có AutoCAD, không có thì lưu sang DXF.</div>
-</div></header>
+<div class="sheet">
+<img src="cad_hero.png" alt="Mặt bằng đào đắp của khu đất mẫu: phần xanh là đắp, phần đỏ là đào" width="1800" height="800">
+<table class="block">
+<tr><td colspan="2" class="name">SanNenPro</td></tr>
+<tr><td colspan="2" class="what">Tính khối lượng san nền từ DWG/DXF</td></tr>
+<tr><td>Phiên bản 2.0</td><td>Windows</td></tr>
+<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip">Tải về (99 MB)</a></td></tr>
+</table>
+</div>
 <main>
-<section><div class="wrap"><h2>Làm được gì</h2><div class="grid">
-<div><h3>Hai cách tính song song</h3><p>Lưới ô theo cách quen dùng và mô hình TIN chính xác, để đối chiếu ngay.</p></div>
-<div><h3>Taluy và đường gãy</h3><p>Nhập hệ số mái đào, đắp. TIN ép theo mép mương, bờ taluy.</p></div>
-<div><h3>Cân bằng đào đắp</h3><p>Tìm cao độ san phẳng cân bằng, đường cong khối lượng, cân đối đất theo hệ số K.</p></div>
-<div><h3>Tự xử lý ranh giới</h3><p>Nhiều khu, cắt phần chồng lấn, lấp khe hở, ranh giới hình bất kỳ.</p></div>
-<div><h3>Tự kiểm tra số liệu</h3><p>Điểm trùng, điểm dị thường, ô thiếu điểm đo, chênh lệch giữa hai cách tính.</p></div>
-<div><h3>Dùng trong AutoCAD</h3><p>Lệnh <code>SANNEN</code> mở tool, <code>SANNENKQ</code> chèn kết quả đúng tọa độ.</p></div>
-</div></div></section>
-<section><div class="wrap"><h2>Hình ảnh</h2><div class="shots">
-<figure><img src="bando.png" alt="Bản đồ chiều cao đào đắp theo ô" width="1520" height="1000" loading="lazy"><figcaption>Bản đồ đào đắp</figcaption></figure>
-<figure><img src="giaodien.png" alt="Giao diện SanNenPro" width="916" height="759" loading="lazy"><figcaption>Giao diện chương trình</figcaption></figure>
-<figure><img src="matbang.png" alt="Mặt bằng san nền trong CAD" width="1387" height="870" loading="lazy"><figcaption>Mặt bằng CAD: ô, cao độ, đào đắp</figcaption></figure>
-<figure><img src="tonghop.png" alt="Bảng khối lượng và đường cong cân bằng" width="1520" height="1000" loading="lazy"><figcaption>Tổng hợp và đường cong cân bằng</figcaption></figure>
-</div><p style="color:var(--mute);font-size:15px;margin-top:16px">Hình dùng khu đất mẫu giả lập.</p></div></section>
-<section><div class="wrap"><h2>Bắt đầu trong 4 bước</h2><ol>
-<li>Tải file, giải nén, chạy <code>SanNenPro.exe</code>.</li>
-<li>Bấm <b>Thêm</b>, chọn file DWG hoặc DXF.</li>
-<li>Nhập cao độ thiết kế, bước lưới, hệ số K, và hệ số mái nếu có taluy.</li>
-<li>Bấm <b>CHẠY</b>, rồi <b>Mở kết quả</b>.</li>
-</ol><p>Bản vẽ cần có cao độ tự nhiên và ranh giới là polyline kín. Tên layer tùy ý, chương trình tự nhận.</p></div></section>
+<p>SanNenPro đọc điểm cao độ và ranh giới trong bản vẽ, chia lưới ô, tính đào đắp từng ô rồi xuất bảng khối lượng và mặt bằng. Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF.</p>
+
+<h2>Cách dùng</h2>
+<ol>
+<li>Giải nén, chạy <b>SanNenPro.exe</b>.</li>
+<li>Bấm <b>Thêm</b>, chọn bản vẽ.</li>
+<li>Nhập cao độ thiết kế, bước lưới, hệ số K. Có taluy thì nhập hệ số mái.</li>
+<li>Bấm <b>CHẠY</b>, xong bấm <b>Mở kết quả</b>.</li>
+</ol>
+<figure><img src="giaodien.png" alt="Cửa sổ SanNenPro sau khi tính xong" width="916" height="759" loading="lazy"></figure>
+
+<h2>Bản vẽ cần có</h2>
+<table class="d">
+<tr><th>Dữ liệu</th><th>Dạng</th></tr>
+<tr><td>Cao độ tự nhiên</td><td>TEXT, MTEXT, POINT có Z, hoặc block có thuộc tính cao độ</td></tr>
+<tr><td>Ranh giới</td><td>Polyline kín, mỗi khu một polyline</td></tr>
+<tr><td>Cao độ thiết kế</td><td>Nhập tay, hoặc TEXT trên layer riêng</td></tr>
+<tr><td>Đường gãy, nếu có</td><td>Line hoặc polyline, tên layer có chữ break hoặc duong gay</td></tr>
+</table>
+<p>Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm <b>Đọc danh sách layer</b> và chọn lại.</p>
+
+<h2>Kết quả</h2>
+<table class="d">
+<tr><th>File</th><th>Nội dung</th></tr>
+<tr><td>SanNen_KhoiLuong.xlsx</td><td>Bảng từng khu, tổng hợp, cân đối đất theo K, cân bằng đào đắp, taluy, kiểm tra số liệu</td></tr>
+<tr><td>SanNen_MatBang.dwg</td><td>Lưới, cao độ nút, đào đắp từng ô, đường 0, chân taluy</td></tr>
+<tr><td>SanNen_BaoCao.pdf</td><td>Bản đồ đào đắp, tổng hợp, đường cong cân bằng, cảnh báo</td></tr>
+</table>
+<figure><img src="matbang.png" alt="Mặt bằng trong CAD với tên ô, diện tích và khối lượng từng ô" width="1387" height="870" loading="lazy"><figcaption>Mặt bằng xuất ra, mỗi ô ghi diện tích và khối lượng đào đắp.</figcaption></figure>
+<figure><img src="tonghop.png" alt="Bảng tổng hợp và đường cong khối lượng theo cao độ san" width="1520" height="1000" loading="lazy"><figcaption>Báo cáo PDF: tổng hợp và đường cong cân bằng.</figcaption></figure>
+
+<h2>Cách tính</h2>
+<ul>
+<li><b>Lưới ô:</b> V = S × trung bình |h| các đỉnh ô, tách theo đường h = 0.</li>
+<li><b>TIN:</b> cắt tam giác theo ô và tích phân; đường gãy được ép thành cạnh tam giác.</li>
+<li><b>Taluy:</b> mái 1:m từ mép ranh giới đến khi gặp mặt đất, tính trên lưới 0,5 m, rộng tối đa 30 m.</li>
+<li><b>Nhiều khu:</b> phần chồng lấn tính cho khu đứng trước, khe hở nhập vào khu kề.</li>
+</ul>
+
+<h2>Đã kiểm tra</h2>
+<p>20 bài toán có đáp số tính tay đều đạt. Đối chiếu với HML trên 649 ô của một công trình thực tế, 617 ô lệch không quá 0,02. 32 ô còn lại lệch do làm tròn cao độ nút hoặc do đỉnh có h = 0.</p>
+
+<h2>Trong AutoCAD</h2>
+<p>Mở SanNenPro.exe một lần, dùng APPLOAD nạp <b>sannen.lsp</b>. Lệnh <b>SANNEN</b> mở chương trình với bản vẽ đang mở, lệnh <b>SANNENKQ</b> chèn kết quả đúng tọa độ.</p>
+
+<h2>Chưa làm được</h2>
+<ul>
+<li>Taluy tính cho cả chu vi ngoài, chưa chọn được từng cạnh.</li>
+<li>Chưa tính bóc phong hoá, cọc, hầm, hố móng.</li>
+<li>Cao độ cân bằng chưa gồm taluy.</li>
+</ul>
+<p>Xem sheet Kiểm tra trong file Excel và tự rà lại số liệu trước khi dùng. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.</p>
 </main>
-<footer><div class="wrap">SanNenPro 2.0. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu. Kết quả cần được kỹ sư kiểm tra trước khi sử dụng.</div></footer>
+<footer>Hình minh họa dùng khu đất giả lập. Mã nguồn trên <a href="https://github.com/huyhoang31897-stack/SanNenPro">GitHub</a>.</footer>
 </body>
 </html>
