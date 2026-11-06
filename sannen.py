@@ -48,7 +48,7 @@ from shapely import affinity
 from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
-__version__ = "2.0"
+__version__ = "2.1"
 
 DEFAULTS = {
     "layer_pts": "TL-CDTN",      # cao độ tự nhiên
@@ -1178,7 +1178,7 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None):
 
     # Tổng hợp
     title(ws, "BẢNG TỔNG HỢP KHỐI LƯỢNG SAN NỀN / Earthwork summary",
-          f"{cfg['project'] or 'Dự án'}  |  Lập ngày {dt.date.today():%d/%m/%Y}  |  SanNenPro {__version__}")
+          (f"{cfg['project']}  |  " if cfg["project"] else "") + f"Lập ngày {dt.date.today():%d/%m/%Y}  |  SanNenPro {__version__}")
     hdr = ["STT", "Khu vực\nZone", "Cao độ TK\nDesign level", "Số ô\nCells", "Diện tích ô (m2)\nArea", "S đắp (m2)\nFill area", "S đào (m2)\nCut area",
            "V đắp lưới ô (m3)", "V đào lưới ô (m3)", "V đắp TIN (m3)", "V đào TIN (m3)", "Chênh lưới ô/TIN (%)"]
     r0 = 4
@@ -1222,20 +1222,20 @@ def write_excel(path, zones, cfg, bal, Q, K, T=None):
         body(ws.cell(r, 5, a), nf, bold)
         body(ws.cell(r, 6, b), nf, bold)
         r += 1
-    line("Hệ số K (m3 đất đào cho 1 m3 đắp đã đầm)", K, f"=E{kr}", "0.00")
+    line("Hệ số K (đào / đắp đã đầm)", K, f"=E{kr}", "0.00")
     ws.cell(kr, 5).fill = PatternFill("solid", fgColor="FFF2CC")
     a0 = r
-    line("Tổng V đắp trong ranh", f"=H{tot}", f"=J{tot}")
-    line("Tổng V đào trong ranh", f"=I{tot}", f"=K{tot}")
+    line("V đắp trong ranh", f"=H{tot}", f"=J{tot}")
+    line("V đào trong ranh", f"=I{tot}", f"=K{tot}")
     tf = tc = 0.0
     if T:
         tf, tc = float(T["vf"].sum()), float(T["vc"].sum())
-    line("V đắp mái taluy", round(tf, 2), round(tf, 2))
-    line("V đào mái taluy", round(tc, 2), round(tc, 2))
-    line("Đất đào cần cho phần đắp = K x (đắp + taluy đắp)", f"=E{kr}*(E{a0}+E{a0 + 2})", f"=F{kr}*(F{a0}+F{a0 + 2})")
-    line("Đất thừa (+) / thiếu (-) = đào + taluy đào - đất cần đắp", f"=E{a0 + 1}+E{a0 + 3}-E{a0 + 4}", f"=F{a0 + 1}+F{a0 + 3}-F{a0 + 4}",
+    line("V đắp taluy", round(tf, 2), round(tf, 2))
+    line("V đào taluy", round(tc, 2), round(tc, 2))
+    line("Đất cần cho đắp (K x V đắp)", f"=E{kr}*(E{a0}+E{a0 + 2})", f"=F{kr}*(F{a0}+F{a0 + 2})")
+    line("Đất thừa (+) / thiếu (-)", f"=E{a0 + 1}+E{a0 + 3}-E{a0 + 4}", f"=F{a0 + 1}+F{a0 + 3}-F{a0 + 4}",
          "#,##0.00;[Red]-#,##0.00", True)
-    line("Cao độ san phẳng cân bằng đào đắp (TIN, chưa gồm taluy)", round(bal[0], 3), None, "0.000", True)
+    line("Cao độ cân bằng (TIN)", round(bal[0], 3), None, "0.000", True)
     ws.column_dimensions["A"].width = 6
     ws.column_dimensions["B"].width = 14
     ws.column_dimensions["C"].width = 13

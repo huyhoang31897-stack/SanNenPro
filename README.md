@@ -4,7 +4,7 @@ Tính khối lượng san nền từ DWG/DXF. Đọc điểm cao độ và ranh 
 
 ![Mặt bằng đào đắp của khu đất mẫu](docs/preview.png)
 
-**[Tải bản Windows 2.0 (99 MB)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip)** · [Trang giới thiệu](https://huyhoang31897-stack.github.io/SanNenPro/)
+**[Tải bản Windows 2.1 (99 MB)](https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.1.zip)** · [Trang giới thiệu, có video](https://huyhoang31897-stack.github.io/SanNenPro/) · [File mẫu](mau/)
 
 Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.
 
@@ -16,6 +16,8 @@ Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có
 4. Bấm **CHẠY**, xong bấm **Mở kết quả**.
 
 ![Cửa sổ SanNenPro](docs/giaodien.png)
+
+Muốn thử ngay: chọn file trong thư mục `Mau`, nhập cao độ thiết kế −0,6 rồi bấm **CHẠY**. Kết quả của file mẫu xem sẵn ở thư mục [`mau`](mau/).
 
 ## Bản vẽ cần có
 
@@ -49,6 +51,16 @@ Tên layer tùy ý, chương trình tự nhận. Nhận sai thì bấm **Đọc 
 
 20 bài toán có đáp số tính tay đều đạt (`test_sannen.py`). Đối chiếu với HML trên 649 ô của một công trình thực tế, 617 ô lệch không quá 0,02. 32 ô còn lại lệch do làm tròn cao độ nút hoặc do đỉnh có h = 0.
 
+## Ví dụ thực tế
+
+Khu đất 7 khu vực, khoảng 16.400 m², đã tính bằng HML. Chạy lại bằng SanNenPro cho thấy khu cuối sót 14 ô (191 m², khoảng 59 m³), 4 chỗ ranh giới chồng lấn tổng 55 m² bị tính hai lần và 21 m² khe hở chưa được tính.
+
+| Lưới ô, m³ | Bảng cũ | Sau khi sửa |
+|---|---:|---:|
+| Đắp | 1.198,61 | 1.268,92 |
+| Đào | 3.602,83 | 3.593,54 |
+| Đất thừa, K = 1 | 2.404,22 | 2.324,62 |
+
 ## Trong AutoCAD
 
 Mở `SanNenPro.exe` một lần, dùng `APPLOAD` nạp `sannen.lsp`. Lệnh `SANNEN` mở chương trình với bản vẽ đang mở, lệnh `SANNENKQ` chèn kết quả đúng tọa độ.
@@ -71,3 +83,7 @@ python sannen.py "ban ve.dwg" --td -0.6 --step 5 --k 1.15
 python sannen.py a.dwg b.dwg --td 2.5 --taluy-dao 1 --taluy-dap 1.5 --out KetQua
 python test_sannen.py
 ```
+
+## Tác giả
+
+Hoàng HH. Báo lỗi hoặc góp ý tại [Issues](https://github.com/huyhoang31897-stack/SanNenPro/issues). Giấy phép [MIT](LICENSE).

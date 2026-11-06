@@ -34,7 +34,7 @@ table.d{border-collapse:collapse;width:100%;margin:6px 0 14px;font-size:16px}
 table.d th,table.d td{border:1px solid #16191d;padding:7px 10px;text-align:left;vertical-align:top}
 table.d th{font-weight:700;background:#eef0f2}
 table.d td.n,table.d th.n{text-align:right;white-space:nowrap}
-figure{margin:16px 0 22px}figure img{display:block;width:100%;height:auto;border:1px solid #16191d}
+figure{margin:16px 0 22px}figure video{display:block;width:100%;height:auto;background:#212830}figure img{display:block;width:100%;height:auto;border:1px solid #16191d}
 figcaption{font-size:15px;color:#4a525c;margin-top:5px}
 footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color:#4a525c}
 @media (max-width:760px){.sheet .block{position:static;width:100%;border-width:2px 0 0}.sheet>img{min-height:220px}}
@@ -46,12 +46,14 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <table class="block">
 <tr><td colspan="2" class="name">SanNenPro</td></tr>
 <tr><td colspan="2" class="what">Tính khối lượng san nền từ DWG/DXF</td></tr>
-<tr><td>Phiên bản 2.0</td><td>Windows</td></tr>
-<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.0.zip">Tải về (99 MB)</a></td></tr>
+<tr><td>Phiên bản 2.1</td><td>Windows</td></tr>
+<tr><td colspan="2" class="dl"><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/ban-chay/SanNenPro_v2.1.zip">Tải về (99 MB)</a></td></tr>
 </table>
 </div>
 <main>
 <p>SanNenPro đọc điểm cao độ và ranh giới trong bản vẽ, chia lưới ô, tính đào đắp từng ô rồi xuất bảng khối lượng và mặt bằng. Giải nén là chạy, không cần cài Python. Đọc file DWG cần máy có AutoCAD; không có thì lưu bản vẽ sang DXF.</p>
+
+<figure><video controls playsinline preload="none" poster="demo_poster.jpg" width="1280" height="720"><source src="demo.mp4" type="video/mp4">Trình duyệt không phát được video. <a href="demo.mp4">Tải video</a>.</video><figcaption>Quy trình trên khu đất mẫu, 51 giây, không có tiếng.</figcaption></figure>
 
 <h2>Cách dùng</h2>
 <ol>
@@ -61,6 +63,15 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <li>Bấm <b>CHẠY</b>, xong bấm <b>Mở kết quả</b>.</li>
 </ol>
 <figure><img src="giaodien.png" alt="Cửa sổ SanNenPro sau khi tính xong" width="916" height="759" loading="lazy"></figure>
+
+<h2>Thử với file mẫu</h2>
+<p>Trong bản tải về có thư mục <b>Mau</b>. Chọn file mẫu, nhập cao độ thiết kế −0,6 rồi bấm CHẠY. Có thể xem kết quả trước khi tải chương trình:</p>
+<ul>
+<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/Khu_dat_mau.dxf">Khu_dat_mau.dxf</a>: bản vẽ đầu vào, 620 điểm cao độ, 3 khu</li>
+<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/SanNen_KhoiLuong.xlsx">SanNen_KhoiLuong.xlsx</a></li>
+<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/SanNen_MatBang.dwg">SanNen_MatBang.dwg</a></li>
+<li><a href="https://github.com/huyhoang31897-stack/SanNenPro/raw/main/mau/SanNen_BaoCao.pdf">SanNen_BaoCao.pdf</a></li>
+</ul>
 
 <h2>Bản vẽ cần có</h2>
 <table class="d">
@@ -93,6 +104,15 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 <h2>Đã kiểm tra</h2>
 <p>20 bài toán có đáp số tính tay đều đạt. Đối chiếu với HML trên 649 ô của một công trình thực tế, 617 ô lệch không quá 0,02. 32 ô còn lại lệch do làm tròn cao độ nút hoặc do đỉnh có h = 0.</p>
 
+<h2>Ví dụ thực tế</h2>
+<p>Khu đất 7 khu vực, khoảng 16.400 m², đã tính bằng HML. Chạy lại bằng SanNenPro cho thấy khu cuối sót 14 ô (191 m², khoảng 59 m³), 4 chỗ ranh giới chồng lấn tổng 55 m² bị tính hai lần và 21 m² khe hở chưa được tính.</p>
+<table class="d">
+<tr><th>Lưới ô, m³</th><th class="n">Bảng cũ</th><th class="n">Sau khi sửa</th></tr>
+<tr><td>Đắp</td><td class="n">1.198,61</td><td class="n">1.268,92</td></tr>
+<tr><td>Đào</td><td class="n">3.602,83</td><td class="n">3.593,54</td></tr>
+<tr><td>Đất thừa, K = 1</td><td class="n">2.404,22</td><td class="n">2.324,62</td></tr>
+</table>
+
 <h2>Trong AutoCAD</h2>
 <p>Mở SanNenPro.exe một lần, dùng APPLOAD nạp <b>sannen.lsp</b>. Lệnh <b>SANNEN</b> mở chương trình với bản vẽ đang mở, lệnh <b>SANNENKQ</b> chèn kết quả đúng tọa độ.</p>
 
@@ -104,6 +124,6 @@ footer{max-width:760px;margin:0 auto;padding:18px 20px 36px;font-size:15px;color
 </ul>
 <p>Xem sheet Kiểm tra trong file Excel và tự rà lại số liệu trước khi dùng. File chưa ký số nên Windows có thể cảnh báo khi mở lần đầu.</p>
 </main>
-<footer>Hình minh họa dùng khu đất giả lập. Mã nguồn trên <a href="https://github.com/huyhoang31897-stack/SanNenPro">GitHub</a>.</footer>
+<footer>Hoàng HH. Báo lỗi hoặc góp ý tại <a href="https://github.com/huyhoang31897-stack/SanNenPro/issues">GitHub Issues</a>. Mã nguồn <a href="https://github.com/huyhoang31897-stack/SanNenPro">trên GitHub</a>, giấy phép MIT. Hình và video dùng khu đất giả lập.</footer>
 </body>
 </html>
