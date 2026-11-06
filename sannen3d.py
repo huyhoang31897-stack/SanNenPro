@@ -59,77 +59,6 @@ def split_all(xy, zg, zd):
     return out
 
 
-def clean_tris(tris, tol=0.01, hmin=0.02):
-    """Làm sạch lưới tam giác trước khi dựng khối solid: gộp đỉnh cách nhau dưới tol (mặt bằng),
-    bỏ tam giác suy biến, lật cạnh của tam giác quá mảnh. tris: [(x, y, a, b)] * 3."""
-    from scipy.spatial import cKDTree
-    pts = [q for t in tris for q in t]
-    if not pts:
-        return []
-    P = np.array([q[:2] for q in pts], float)
-    par = list(range(len(P)))
-
-    def find(i):
-        while par[i] != i:
-            par[i] = par[par[i]]
-            i = par[i]
-        return i
-    for i, j in cKDTree(P).query_pairs(tol):
-        ri, rj = find(i), find(j)
-        if ri != rj:
-            par[max(ri, rj)] = min(ri, rj)
-    rep = [find(i) for i in range(len(P))]
-    area = lambda f: (P[f[1], 0] - P[f[0], 0]) * (P[f[2], 1] - P[f[0], 1]) - (P[f[2], 0] - P[f[0], 0]) * (P[f[1], 1] - P[f[0], 1])
-    faces = set()
-    for k in range(len(tris)):
-        f = tuple(rep[3 * k + i] for i in range(3))
-        if len(set(f)) < 3:
-            continue
-        a = area(f)
-        if abs(a) < 1e-9:
-            continue
-        faces.add(f if a > 0 else (f[0], f[2], f[1]))
-    faces = set(faces)
-    for _ in range(20):
-        emap = {}
-        for f in faces:
-            for i in range(3):
-                emap[(f[i], f[(i + 1) % 3])] = f
-        changed = False
-        for f in list(faces):
-            if f not in faces:
-                continue
-            best = None
-            for i in range(3):
-                u, v, w = f[i], f[(i + 1) % 3], f[(i + 2) % 3]
-                L = np.hypot(*(P[v] - P[u]))
-                if best is None or L > best[0]:
-                    best = (L, u, v, w)
-            L, u, v, w = best
-            h = abs(area(f)) / L if L else 0
-            if h >= hmin:
-                continue
-            g = emap.get((v, u))
-            if g is None or g not in faces:
-                faces.discard(f)            # cạnh biên: bỏ tam giác, biên đi qua đỉnh w
-            else:
-                x = [k for k in g if k not in (u, v)][0]
-                n1, n2 = (w, u, x), (x, v, w)
-                if area(n1) > 1e-9 and area(n2) > 1e-9:
-                    faces.discard(f)
-                    faces.discard(g)
-                    faces.add(n1)
-                    faces.add(n2)
-                else:
-                    continue
-            changed = True
-            for e in ((u, v), (v, w), (w, u)):
-                emap.pop(e, None)
-        if not changed:
-            break
-    return [[pts[k] for k in f] for f in faces]
-
-
 def body_mesh(tris, pinch=False):
     """Khối kín giữa mặt đất và mặt thiết kế: mặt trên, mặt dưới, vách biên.
     pinch=True: đỉnh có bề dày 0 dùng chung cho mặt trên và dưới, để AutoCAD đổi được sang solid."""
@@ -459,14 +388,14 @@ LAYERS_3D = {   # layer: (màu RGB, mô tả)
     "SN3D_DAT_XQ": ((120, 130, 115), "Mặt đất xung quanh"),
     "SN3D_CHU": ((255, 255, 255), "Ghi chú"),
 }
-SOLID_LAYERS = ("SN3D_NEN", "SN3D_DAO", "SN3D_DAP", "SN3D_BOC", "SN3D_HO_MONG")
 CHECK_LAYERS = ("SN3D_DAO", "SN3D_DAP", "SN3D_BOC", "SN3D_HO_MONG", "SN3D_COC")
 
 
 def model_3d(zones, tin_tris, T, X, cfg, origin):
-    """Các khối 3D theo toạ độ cục bộ (trừ gốc). Trả về dict: bodies, surfaces, piles, labels, khung."""
+    """Các khối 3D theo toạ độ cục bộ (trừ gốc), chia theo ô lưới để AutoCAD đổi sang solid chắc chắn.
+    bodies: (layer, khu, tên, pts, faces, V bảng tính hoặc None)."""
     ox, oy = origin
-    bodies, surfaces = [], []      # (layer, tên, pts, faces, V bảng tính hoặc None)
+    bodies, surfaces = [], []
     sub = lambda pts: [(x - ox, y - oy, z) for x, y, z in pts]
     zs = []
     for z in zones:
@@ -474,27 +403,30 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
         zd = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3)
         zs += [ov.z.min() - cfg["strip"], zd.min()]
     zbase = math.floor(min(zs) - 2.0)
-    for z in zones:
+    for zi, z in enumerate(zones):
         ov = z["ov"]
         zg = ov.z - cfg["strip"]
         zd = z["design"](ov.xy.reshape(-1, 2)).reshape(-1, 3)
-        zd = np.where(np.abs(zd - zg) < 0.002, zg, zd)   # chênh dưới 2 mm coi như bằng, tránh mặt quá mảnh khi đổi solid
-        allp = split_all(ov.xy, zg, zd)
-        p, q = body_mesh(clean_tris([[(a[0], a[1], min(a[2], a[3]), zbase) for a in t] for t in allp]), pinch=True)
-        bodies.append(("SN3D_NEN", z["name"] + " nền", sub(p), q, None))
-        fill, cut = split_triangles(ov.xy, zg, zd)
-        for tris, lay, nm, v in ((fill, "SN3D_DAP", "đắp", z["tvf"]), (cut, "SN3D_DAO", "đào", z["tvc"])):
-            if tris:
-                p, q = body_mesh(clean_tris(tris), pinch=True)
-                bodies.append((lay, f"{z['name']} {nm}", sub(p), q, v))
-        if cfg["strip"] > 0:
-            tris = [[(a[0], a[1], a[2] + cfg["strip"], a[2]) for a in t]
-                    for t in ([[(x, y, g, g) for (x, y), g in zip(pp, gg)] for pp, gg in zip(ov.xy, zg)])]
-            p, q = body_mesh(clean_tris(tris), pinch=True)
-            bodies.append(("SN3D_BOC", z["name"] + " bóc", sub(p), q, None))
+        for c in np.unique(ov.own):
+            k = ov.own == c
+            xy, g, d = ov.xy[k], zg[k], zd[k]
+            allp = split_all(xy, g, d)
+            p, q = body_mesh([[(a[0], a[1], min(a[2], a[3]), zbase) for a in t] for t in allp], pinch=True)
+            if q:
+                bodies.append(("SN3D_NEN", zi, z["name"], sub(p), q, None))
+            fill, cut = split_triangles(xy, g, d)
+            for tris, lay in ((fill, "SN3D_DAP"), (cut, "SN3D_DAO")):
+                if tris:
+                    p, q = body_mesh(tris, pinch=True)
+                    if q:
+                        bodies.append((lay, zi, z["name"], sub(p), q, None))
+            if cfg["strip"] > 0:
+                tris = [[(x, y, gg + cfg["strip"], gg) for (x, y), gg in zip(pp, g3)] for pp, g3 in zip(xy, g)]
+                p, q = body_mesh(tris, pinch=True)
+                if q:
+                    bodies.append(("SN3D_BOC", zi, z["name"], sub(p), q, None))
     if T and T.get("mesh") and T["mesh"]["faces"]:
-        surfaces.append(("SN3D_TALUY", "Mái taluy", sub(T["mesh"]["pts"]), [tuple(f) for f in T["mesh"]["faces"]]))
-    # mặt đất ngoài ranh
+        surfaces.append(("SN3D_TALUY", sub(T["mesh"]["pts"]), [tuple(f) for f in T["mesh"]["faces"]]))
     from shapely.geometry import Point
     from shapely.ops import unary_union
     U = unary_union([z["poly"] for z in zones])
@@ -502,24 +434,36 @@ def model_3d(zones, tin_tris, T, X, cfg, origin):
     keep = [i for i, t in enumerate(V) if not U.contains(Point(float(np.mean(t[:, 0])), float(np.mean(t[:, 1]))))]
     if keep:
         p, q = surface_mesh(V[keep], Z[keep])
-        surfaces.append(("SN3D_DAT_XQ", "Mặt đất xung quanh", sub(p), q))
+        surfaces.append(("SN3D_DAT_XQ", sub(p), q))
     piles = []
     if X:
-        for p in X["pits"]:
+        for i, p in enumerate(X["pits"]):
             if p["zb"] is not None:
                 pts, faces = pit_mesh(p, cfg)
-                bodies.append(("SN3D_HO_MONG", p["name"], sub(pts), faces, p["v"]))
+                bodies.append(("SN3D_HO_MONG", 1000 + i, p["name"], sub(pts), faces, p["v"]))
         piles = [(c["x"] - ox, c["y"] - oy, c["top"], c["d"], c["L"]) for c in X.get("pile_items", [])]
-    return dict(bodies=bodies, surfaces=surfaces, piles=piles, zbase=zbase)
+    allp = np.array([pt for b in bodies for pt in b[3]])
+    x0, y0, x1, y1 = allp[:, 0].min(), allp[:, 1].min(), allp[:, 0].max(), allp[:, 1].max()
+    zt = allp[:, 2].max()
+    W = max(x1 - x0, y1 - y0)
+    lift = max(4.0, 0.5 * (zt - zbase))
+    lifts = {"SN3D_NEN": 0.0, "SN3D_DAP": lift, "SN3D_DAO": 2 * lift, "SN3D_BOC": 3 * lift}
+    return dict(bodies=bodies, surfaces=surfaces, piles=piles, zbase=zbase, box=(x0, y0, x1, y1, zt), W=W,
+                dx=(x1 - x0) + 0.45 * W, lift=lift, lifts=lifts)
 
 
-def write_dxf3d(path, M, zones, T, X, cfg, origin, shift=(0.0, 0.0)):
-    """Ghi DXF 3D. Toạ độ = cục bộ + shift (shift = gốc khi không có AutoCAD để đổi solid)."""
+def temp_layer(lay, key):
+    return f"SNT_{lay[5:]}_{key}"
+
+
+def write_dxf3d(path, M, zones, X, origin, shift=(0.0, 0.0), for_acad=False):
+    """Ghi DXF 3D. for_acad=True: mỗi khu một layer tạm để AutoCAD gộp solid, hình tách do AutoCAD chép.
+    Ngược lại: layer cuối, hình tách chép sẵn; shift = gốc để về toạ độ thật."""
     import ezdxf
+    from ezdxf.enums import TextEntityAlignment
     from ezdxf.math import OCS
     doc = ezdxf.new("R2018", setup=True)
     doc.units = 6
-    doc.header["$INSUNITS"] = 6
     st = doc.styles.new("SN3D_ARIAL")
     st.dxf.font = "arial.ttf"
     for nm, (rgb, desc) in LAYERS_3D.items():
@@ -529,6 +473,12 @@ def write_dxf3d(path, M, zones, T, X, cfg, origin, shift=(0.0, 0.0)):
             ly = doc.layers.add(nm + suf)
             ly.rgb = rgb
             ly.description = desc + (" (hình tách)" if suf else "")
+    tmp = set()
+    for b in M["bodies"]:
+        t = temp_layer(b[0], b[1])
+        if for_acad and t not in tmp:
+            tmp.add(t)
+            doc.layers.add(t).rgb = LAYERS_3D[b[0]][0]
     msp = doc.modelspace()
     sx, sy = shift
 
@@ -538,79 +488,77 @@ def write_dxf3d(path, M, zones, T, X, cfg, origin, shift=(0.0, 0.0)):
             d.vertices = [(x + sx + dx, y + sy, z + dz) for x, y, z in pts]
             d.faces = [list(f) for f in faces]
 
-    for lay, nm, p, q, v in M["bodies"]:
+    for lay, key, nm, p, q, v in M["bodies"]:
+        add_mesh(temp_layer(lay, key) if for_acad else lay, p, q)
+        if not for_acad and lay in M["lifts"]:
+            add_mesh(lay + "_TACH", p, q, dx=M["dx"], dz=M["lifts"][lay])
+    for lay, p, q in M["surfaces"]:
         add_mesh(lay, p, q)
-    for lay, nm, p, q in M["surfaces"]:
-        add_mesh(lay, p, q)
-    # cọc dạng lăng trụ 24 cạnh (khi có AutoCAD sẽ thay bằng trụ tròn)
-    for x, y, top, d, L in M["piles"]:
-        n = 24
-        ring = [(x + d / 2 * math.cos(2 * math.pi * i / n), y + d / 2 * math.sin(2 * math.pi * i / n)) for i in range(n)]
-        pts = [(a, b, top - L) for a, b in ring] + [(a, b, top) for a, b in ring]
-        faces = [(i, (i + 1) % n, (i + 1) % n + n) for i in range(n)] + [(i, (i + 1) % n + n, i + n) for i in range(n)]
-        faces += [(0, i + 1, i) for i in range(1, n - 1)] + [(n, n + i, n + i + 1) for i in range(1, n - 1)]
-        add_mesh("SN3D_COC", pts, faces)
+    if not for_acad:   # không có AutoCAD: cọc là lăng trụ 24 cạnh
+        for x, y, top, d, L in M["piles"]:
+            n = 24
+            ring = [(x + d / 2 * math.cos(2 * math.pi * i / n), y + d / 2 * math.sin(2 * math.pi * i / n)) for i in range(n)]
+            pts = [(a, b, top - L) for a, b in ring] + [(a, b, top) for a, b in ring]
+            faces = [(i, (i + 1) % n, (i + 1) % n + n) for i in range(n)] + [(i, (i + 1) % n + n, i + n) for i in range(n)]
+            faces += [(0, i + 1, i) for i in range(1, n - 1)] + [(n, n + i, n + i + 1) for i in range(1, n - 1)]
+            add_mesh("SN3D_COC", pts, faces)
 
-    # hình tách khối, đặt bên phải
-    allp = np.array([pt for b in M["bodies"] for pt in b[2]])
-    x0, y0 = allp[:, 0].min(), allp[:, 1].min()
-    x1, y1 = allp[:, 0].max(), allp[:, 1].max()
-    zb, zt = M["zbase"], allp[:, 2].max()
-    W = max(x1 - x0, y1 - y0)
-    dx = (x1 - x0) + 0.35 * W + 0.1 * W
-    lift = max(4.0, 0.5 * (zt - zb))
-    zmin = {k: min(pt[2] for b in M["bodies"] if b[0] == k for pt in b[2]) for k in ("SN3D_NEN", "SN3D_DAP", "SN3D_DAO", "SN3D_BOC")
-            if any(b[0] == k for b in M["bodies"])}
-    lifts = {"SN3D_NEN": 0.0, "SN3D_DAP": lift, "SN3D_DAO": 2 * lift, "SN3D_BOC": 3 * lift}
-    for lay, nm, p, q, v in M["bodies"]:
-        if lay in lifts:
-            add_mesh(lay + "_TACH", p, q, dx=dx, dz=lifts[lay])
-
-    # chữ: mặt phẳng đứng nhìn từ hướng Đông Nam (góc nhìn SE ISO)
+    # chữ trên mặt phẳng đứng, đọc được từ góc nhìn SE ISO
+    x0, y0, x1, y1, zt = M["box"]
+    W, dx, lift = M["W"], M["dx"], M["lift"]
     ocs = OCS((1, -1, 0))
     h = max(0.8, round(W * 0.025, 1))
 
     def label(text, x, y, z, color=None):
         t = msp.add_text(text, height=h, dxfattribs={"layer": "SN3D_CHU", "style": "SN3D_ARIAL"})
         t.dxf.extrusion = (1, -1, 0)
-        t.set_placement(ocs.from_wcs((x + sx, y + sy, z)), align=ezdxf.enums.TextEntityAlignment.BOTTOM_RIGHT)
+        t.set_placement(ocs.from_wcs((x + sx, y + sy, z)), align=TextEntityAlignment.BOTTOM_RIGHT)
         if color:
             t.rgb = color
 
     S = lambda k: sum(z[k] for z in zones)
     vals = {"SN3D_NEN": None, "SN3D_DAP": S("tvf"), "SN3D_DAO": S("tvc"), "SN3D_BOC": X.get("strip_v", 0) if X else 0}
     names = {"SN3D_NEN": "NỀN SAU SAN", "SN3D_DAP": "KHỐI ĐẮP", "SN3D_DAO": "KHỐI ĐÀO", "SN3D_BOC": "BÓC PHONG HOÁ"}
-    for k in zmin:
-        txt = names[k] + ("" if vals[k] is None else f"  {vals[k]:,.2f} m³")
-        zz = zmin[k] + lifts[k] + (0.0 if k != "SN3D_NEN" else 0.5)
-        label(txt, x0 + dx - 0.04 * W, y0 - 0.04 * W, zz, LAYERS_3D[k][0])
-    label("HIỆN TRẠNG + THIẾT KẾ", x0 - 0.04 * W, y0 - 0.04 * W, zt + 1.0)
+    for k in ("SN3D_NEN", "SN3D_DAP", "SN3D_DAO", "SN3D_BOC"):
+        zz = [pt[2] for b in M["bodies"] if b[0] == k for pt in b[3]]
+        if zz:
+            txt = names[k] + ("" if vals[k] is None else f"  {vals[k]:,.2f} m³")
+            label(txt, x0 + dx - 0.04 * W, y0 - 0.04 * W, min(zz) + M["lifts"][k] + (0.5 if k == "SN3D_NEN" else 0.0), LAYERS_3D[k][0])
+    label("HIỆN TRẠNG VÀ THIẾT KẾ", x0 - 0.04 * W, y0 - 0.04 * W, zt + 1.0)
     label("TÁCH KHỐI", x0 + dx - 0.04 * W, y0 - 0.04 * W, zt + 4 * lift + 1.0)
-    doc.set_modelspace_vport(height=1.2 * (x1 - x0 + dx), center=((x0 + x1 + dx) / 2 + sx, (y0 + y1) / 2 + sy))
     doc.saveas(path)
+    return sorted(tmp)
 
 
-def acad_script(dxf, dwg, mpr, M, origin):
-    """Script accoreconsole: đổi mesh sang solid, vẽ cọc trụ tròn, đo MASSPROP, dời về toạ độ thật, lưu DWG."""
+def acad_script(dwg, mpr, M, origin, temps):
+    """Script accoreconsole: đổi mesh sang solid, gộp mỗi khu thành một khối, vẽ cọc trụ tròn,
+    chép hình tách, đo MASSPROP, dời về toạ độ thật, lưu DWG."""
     ox, oy = origin
-    lays = ",".join(SOLID_LAYERS) + "," + ",".join(l + "_TACH" for l in SOLID_LAYERS)
-    L = ["FILEDIA 0", "CMDDIA 0", "CMDECHO 0", "OSMODE 0", "(setvar \"SMOOTHMESHCONVERT\" 2)", "(setvar \"DELOBJ\" 1)",
-         f'(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "{lays}")))) (command "_.CONVTOSOLID" ss ""))']
+    m = mpr.as_posix()
+    L = ["FILEDIA 0", "CMDDIA 0", "CMDECHO 0", "OSMODE 0", '(setvar "DELOBJ" 1)']
+    for mode in (2, 3):
+        L.append(f'(setvar "SMOOTHMESHCONVERT" {mode})')
+        L.append('(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "SNT_*")))) (command "_.CONVTOSOLID" ss ""))')
+    L.append(f'(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "SNT_*")))) (progn (setq f (open "{m}/mesh_left.txt" "w")) (write-line (itoa (sslength ss)) f) (close f)))')
+    L.append('(defun sn:u (lt lf / ss) (if (setq ss (ssget "_X" (list \'(0 . "3DSOLID") (cons 8 lt)))) (if (> (sslength ss) 1) (command "_.UNION" ss "")))'
+             ' (if (setq ss (ssget "_X" (list (cons 8 lt)))) (command "_.CHPROP" ss "" "_LA" lf "")))')
+    for t in temps:
+        lf = "SN3D_" + t[4:].rsplit("_", 1)[0]
+        L.append(f'(sn:u "{t}" "{lf}")')
     if M["piles"]:
-        L.append('(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "SN3D_COC")))) (command "_.ERASE" ss ""))')
         L.append('(setvar "CLAYER" "SN3D_COC")')
         for x, y, top, d, Lc in M["piles"]:
             L.append(f'(command "_.CYLINDER" \'({x:.4f} {y:.4f} {top - Lc:.4f}) {d / 2:.4f} {Lc:.4f})')
         L.append('(setvar "CLAYER" "0")')
-    m = mpr.as_posix()
-    for mode in (3,):   # lần 2 cho các khối chưa đổi được
-        L.append(f'(setvar "SMOOTHMESHCONVERT" {mode})')
-        L.append(f'(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "{lays}")))) (command "_.CONVTOSOLID" ss ""))')
     L.append(f'(setq ss (ssget "_X" \'((0 . "3DSOLID") (8 . "{",".join(CHECK_LAYERS)}"))) i 0)')
     L.append(f'(if ss (repeat (sslength ss) (setq e (ssname ss i) i (1+ i)) '
              f'(command "_.MASSPROP" e "" "_Y" (strcat "{m}/" (cdr (assoc 8 (entget e))) "_" (cdr (assoc 5 (entget e))) ".mpr"))))')
-    L.append(f'(if (setq ss (ssget "_X" \'((0 . "MESH") (8 . "{lays}")))) (progn (setq f (open "{m}/mesh_left.txt" "w")) (write-line (itoa (sslength ss)) f) (close f)))')
+    L.append('(defun sn:cp (lf d / ss e n) (if (setq ss (ssget "_X" (list (cons 8 lf)))) (progn (setq e (entlast)) (command "_.COPY" ss "" \'(0 0 0) d)'
+             ' (setq n (ssadd)) (while (setq e (entnext e)) (ssadd e n)) (command "_.CHPROP" n "" "_LA" (strcat lf "_TACH") ""))))')
+    for lay, lz in M["lifts"].items():
+        L.append(f"(sn:cp \"{lay}\" '({M['dx']:.3f} 0 {lz:.3f}))")
     L.append(f'(command "_.MOVE" (ssget "_X") "" \'(0 0 0) \'({ox:.3f} {oy:.3f} 0))')
+    L.append('(command "_.-PURGE" "_LA" "SNT_*" "_N")')
     L.append('(command "_.-VIEW" "_SE")')
     L.append('(command "_.ZOOM" "_E")')
     L.append(f'_.SAVEAS 2018 "{dwg.as_posix()}"')
@@ -632,54 +580,49 @@ def read_mpr(folder):
 
 def write_dwg3d(out, zones, tin_tris, T, X, cfg, origin):
     """Tạo SanNen_3D.dwg (solid thật, cần AutoCAD) hoặc SanNen_3D.dxf (mesh). Trả về (file, kiểm tra)."""
-    import os
     import shutil
     import subprocess
     import tempfile
     M = model_3d(zones, tin_tris, T, X, cfg, origin)
-    chk = dict(bodies=[], solid=None)
     S = lambda k: sum(z[k] for z in zones)
-    # thể tích khối mesh so với bảng tính
-    for lay in ("SN3D_DAP", "SN3D_DAO", "SN3D_HO_MONG"):
-        vm = sum(mesh_volume(b[2], b[3]) for b in M["bodies"] if b[0] == lay)
-        vt = sum(b[4] for b in M["bodies"] if b[0] == lay)
-        if vt or vm:
-            chk["bodies"].append(dict(layer=lay, mesh=round(vm, 2), table=round(vt, 2)))
-    acc = None
+    tab = {"SN3D_DAP": S("tvf"), "SN3D_DAO": S("tvc"), "SN3D_BOC": X.get("strip_v", 0) if X else 0,
+           "SN3D_HO_MONG": sum(p["v"] for p in X["pits"]) if X else 0, "SN3D_COC": sum(p["v"] for p in X["piles"]) if X else 0}
+    chk = dict(mesh={}, solid=None)
+    for lay in ("SN3D_DAP", "SN3D_DAO", "SN3D_BOC", "SN3D_HO_MONG"):
+        vm = sum(mesh_volume(b[3], b[4]) for b in M["bodies"] if b[0] == lay)
+        if vm or tab[lay]:
+            chk["mesh"][lay] = dict(mesh=round(vm, 2), table=round(tab[lay], 2))
     try:
         import sannen
         acc = sannen.find_accore()
     except Exception:
         acc = None
     out = Path(out)
+    fallback = out / "SanNen_3D.dxf"
     if not acc:
-        p = out / "SanNen_3D.dxf"
-        write_dxf3d(p, M, zones, T, X, cfg, origin, shift=origin)
-        return p, chk
+        write_dxf3d(fallback, M, zones, X, origin, shift=origin)
+        return fallback, chk
     tmp = Path(tempfile.mkdtemp())
     src, dst, mpr = tmp / "in.dxf", tmp / "out.dwg", tmp / "mpr"
     mpr.mkdir()
-    write_dxf3d(src, M, zones, T, X, cfg, origin)
-    scr = tmp / "s.scr"
-    scr.write_text(acad_script(src, dst, mpr, M, origin), encoding="utf-8")
+    temps = write_dxf3d(src, M, zones, X, origin, for_acad=True)
+    (tmp / "s.scr").write_text(acad_script(dst, mpr, M, origin, temps), encoding="utf-8")
     try:
-        subprocess.run([acc, "/i", str(src), "/s", str(scr), "/l", "en-US"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                       timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        subprocess.run([acc, "/i", str(src), "/s", str(tmp / "s.scr"), "/l", "en-US"], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=3600, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except subprocess.TimeoutExpired:
         pass
     if not dst.exists():
-        p = out / "SanNen_3D.dxf"
-        write_dxf3d(p, M, zones, T, X, cfg, origin, shift=origin)
+        write_dxf3d(fallback, M, zones, X, origin, shift=origin)
         shutil.rmtree(tmp, ignore_errors=True)
-        return p, chk
+        return fallback, chk
     vol = read_mpr(mpr)
     left = mpr / "mesh_left.txt"
-    tab = {"SN3D_DAP": S("tvf"), "SN3D_DAO": S("tvc"), "SN3D_BOC": X.get("strip_v", 0) if X else 0,
-           "SN3D_HO_MONG": sum(p["v"] for p in X["pits"]) if X else 0, "SN3D_COC": sum(p["v"] for p in X["piles"]) if X else 0}
     chk["solid"] = dict(mesh_left=int(left.read_text().strip()) if left.exists() else 0,
-                        layers={k: dict(solid=round(sum(v), 2), n=len(v), table=round(tab.get(k, 0), 2)) for k, v in vol.items()})
+                        layers={k: dict(solid=round(sum(v), 2), n=len(v), table=round(tab.get(k, 0), 2)) for k, v in sorted(vol.items())})
     p = out / "SanNen_3D.dwg"
     shutil.copy2(dst, p)
+    fallback.unlink(missing_ok=True)
     shutil.rmtree(tmp, ignore_errors=True)
     return p, chk
 
