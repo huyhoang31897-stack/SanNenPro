@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tim T&#237;m &#183; Sapa Team Building 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--p1:#c9a8ff;--p2:#ff5ccd;--ink:#0d0618}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden;color:#fff;font-family:'Be Vietnam Pro',system-ui,sans-serif}
+  #stage{position:fixed;inset:0;background:#000}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+
+  /* ---------- màn chờ ---------- */
+  #cover{position:absolute;inset:0;overflow:hidden;cursor:pointer;transition:opacity .7s ease, transform .7s ease}
+  #cover.off{opacity:0;transform:scale(1.04);pointer-events:none}
+  .bg{position:absolute;inset:-4%;background:url(cover.jpg) center 60%/cover no-repeat;animation:kb 22s ease-in-out infinite alternate;filter:saturate(1.05)}
+  @keyframes kb{from{transform:scale(1) translate(0,0)}to{transform:scale(1.12) translate(-2%,-1%)}}
+  .shade{position:absolute;inset:0;background:
+     radial-gradient(ellipse 70% 60% at 50% 48%,rgba(13,6,24,.35),rgba(13,6,24,.88) 100%),
+     linear-gradient(180deg,rgba(13,6,24,.7) 0%,rgba(13,6,24,.15) 35%,rgba(13,6,24,.25) 60%,rgba(13,6,24,.95) 100%)}
+  .grain{position:absolute;inset:-50%;opacity:.07;pointer-events:none;animation:gr 1s steps(4) infinite;
+     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+  @keyframes gr{0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-1%)}}
+
+  .top{position:absolute;left:0;right:0;top:max(22px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;
+     padding:0 max(24px,env(safe-area-inset-right)) 0 max(24px,env(safe-area-inset-left));font-size:clamp(10px,1.2vw,13px);letter-spacing:.3em;font-weight:700;color:#e4d6ff}
+  .live{display:flex;align-items:center;gap:8px;letter-spacing:.2em}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--p2);box-shadow:0 0 12px var(--p2);animation:blink 1.6s infinite}
+  @keyframes blink{50%{opacity:.25}}
+
+  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(8px,1.6vh,18px);padding:0 20px}
+  .eyebrow{font-size:clamp(11px,1.4vw,15px);letter-spacing:.5em;font-weight:500;color:#e4d6ff;opacity:0;animation:up .9s .2s forwards}
+  h1{font-weight:900;font-size:clamp(54px,12vw,170px);line-height:.9;letter-spacing:.01em;
+     background:linear-gradient(100deg,var(--p1) 10%,#fff 45%,var(--p2) 90%);background-size:200% 100%;
+     -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 40px rgba(150,80,255,.45));
+     opacity:0;animation:up .9s .35s forwards, shine 6s 1.3s linear infinite}
+  @keyframes shine{to{background-position:-200% 0}}
+  .sub{font-size:clamp(14px,2.2vw,26px);font-weight:700;letter-spacing:.6em;padding-left:.6em;opacity:0;animation:up .9s .5s forwards}
+  .tag{font-size:clamp(13px,1.6vw,18px);color:#efe6ff;opacity:0;animation:up .9s .65s forwards;font-weight:500}
+  @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+  .play{margin-top:clamp(10px,2.5vh,28px);display:flex;align-items:center;gap:16px;padding:10px 26px 10px 10px;border-radius:999px;
+     background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+     box-shadow:0 10px 40px rgba(0,0,0,.35);opacity:0;animation:up .9s .85s forwards;transition:transform .2s, background .2s}
+  #cover:hover .play{background:rgba(255,255,255,.2);transform:translateY(-2px)}
+  .disc{position:relative;width:clamp(58px,6.5vw,76px);height:clamp(58px,6.5vw,76px);border-radius:50%;
+     background:linear-gradient(135deg,#9650ff,var(--p2));display:grid;place-items:center;box-shadow:0 0 30px rgba(255,92,205,.55)}
+  .disc:before{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid rgba(255,92,205,.6);animation:ring 2.2s ease-out infinite}
+  @keyframes ring{from{transform:scale(.9);opacity:1}to{transform:scale(1.35);opacity:0}}
+  .disc svg{width:38%;height:38%;margin-left:8%}
+  .pl{text-align:left;line-height:1.25}
+  .pl b{display:block;font-size:clamp(15px,1.7vw,19px);letter-spacing:.12em}
+  .pl span{font-size:clamp(12px,1.2vw,14px);color:#e4d6ff}
+
+  .bottom{position:absolute;left:0;right:0;bottom:max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 16px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .chips em{font-style:normal;font-size:clamp(10px,1.1vw,12px);font-weight:700;letter-spacing:.14em;padding:6px 12px;border-radius:999px;
+     background:rgba(13,6,24,.55);border:1px solid rgba(201,168,255,.35);color:#e4d6ff}
+  .hint{font-size:12px;color:#cdbdf0;opacity:.9}
+  .rot{display:none}
+  @media (orientation:portrait) and (max-width:700px){.rot{display:inline}}
+
+  /* loading + end */
+  #spin{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;border:3px solid rgba(255,255,255,.15);
+     border-top-color:var(--p2);animation:sp .8s linear infinite;display:none;z-index:4}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #fs{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:5;
+     width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(13,6,24,.5);backdrop-filter:blur(8px);
+     color:#fff;cursor:pointer;display:none;place-items:center}
+  #fs svg{width:20px;height:20px}
+  #end{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;
+     background:radial-gradient(ellipse at center,rgba(60,20,110,.85),rgba(13,6,24,.96));cursor:pointer;z-index:6}
+  #end.on{display:flex;animation:up .6s}
+  #end h2{font-weight:900;font-size:clamp(34px,7vw,90px);background:linear-gradient(100deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #end p{letter-spacing:.35em;font-size:clamp(11px,1.4vw,15px);color:#e4d6ff;font-weight:700}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="v" src="video.mp4?v=15" poster="poster.jpg" preload="auto" playsinline webkit-playsinline></video>
+  <div id="spin"></div>
+  <button id="fs" aria-label="To&#224;n m&#224;n h&#236;nh"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+
+  <div id="cover">
+    <div class="bg"></div><div class="shade"></div><div class="grain"></div>
+    <div class="top"><span>COTECCONS</span><span class="live"><i></i>TEAM BUILDING 2026</span></div>
+    <div class="center">
+      <div class="eyebrow">H&#192;NH TR&#204;NH</div>
+      <h1>TIM T&#205;M</h1>
+      <div class="sub">SAPA &#183; 2026</div>
+      <div class="tag">M&#432;a Sapa kh&#244;ng c&#7843;n &#273;&#432;&#7907;c Tim T&#237;m</div>
+      <div class="play">
+        <div class="disc"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z" fill="#fff"/></svg></div>
+        <div class="pl"><b>XEM VIDEO</b><span>2:20 &#183; nh&#7899; b&#7853;t loa &#128266;</span></div>
+      </div>
+    </div>
+    <div class="bottom">
+      <div class="chips"><em>R</em><em>A</em><em>H</em><em>BINGO</em><em>T&#7840;O D&#193;NG</em></div>
+      <div class="hint rot">&#8635; Xoay ngang &#273;i&#7879;n tho&#7841;i &#273;&#7875; xem to&#224;n m&#224;n h&#236;nh</div>
+    </div>
+  </div>
+
+  <div id="end">
+    <h2>TIM T&#205;M &#272;O&#192;N K&#7870;T</h2>
+    <p>TEAM BUILDING &#183; COTECCONS 2026</p>
+    <div class="play" style="opacity:1;animation:none">
+      <div class="disc"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 11-6 6H4a8 8 0 108-8z" fill="#fff"/></svg></div>
+      <div class="pl"><b>XEM L&#7840;I</b><span>Replay</span></div>
+    </div>
+  </div>
+</div>
+<script>
+var v=document.getElementById('v'),st=document.getElementById('stage'),cover=document.getElementById('cover'),
+    fs=document.getElementById('fs'),end=document.getElementById('end'),spin=document.getElementById('spin');
+function lock(){ try{ screen.orientation.lock('landscape').catch(function(){}); }catch(e){} }
+function iosFull(){ try{ if(v.webkitEnterFullscreen && window.innerWidth<820) v.webkitEnterFullscreen(); }catch(e){} }
+function goFull(){
+  try{ var r=st.requestFullscreen||st.webkitRequestFullscreen;
+    if(r){ var p=r.call(st); if(p&&p.then) p.then(lock).catch(iosFull); else lock(); } else iosFull();
+  }catch(e){ iosFull(); }
+}
+function start(){
+  cover.classList.add('off'); end.classList.remove('on'); spin.style.display='block';
+  v.controls=true; var p=v.play(); if(p&&p.catch) p.catch(function(){ spin.style.display='none'; });
+  goFull(); fs.style.display='grid';
+}
+v.addEventListener('playing',function(){ spin.style.display='none'; });
+v.addEventListener('waiting',function(){ spin.style.display='block'; });
+cover.onclick=start;
+end.onclick=function(){ v.currentTime=0; start(); };
+fs.onclick=function(e){ e.stopPropagation();
+  if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+  else goFull(); };
+v.onended=function(){ v.controls=false; end.classList.add('on'); };
+</script>
+</body>
+</html>
