@@ -83,7 +83,7 @@
 </head>
 <body>
 <div id="stage"><div id="rw">
-  <video id="v" src="video.mp4?v=20" poster="poster.jpg" preload="auto" playsinline webkit-playsinline></video>
+  <video id="v" src="video.mp4?v=21" poster="poster.jpg" preload="auto" playsinline webkit-playsinline></video>
   <div id="spin"></div>
   <button id="rotbtn" aria-label="Xoay"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 3h-2a3 3 0 0 0-3 3M16 21h2a3 3 0 0 0 3-3"/></svg></button>
   <button id="fs" aria-label="To&#224;n m&#224;n h&#236;nh"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
@@ -125,12 +125,19 @@ var playing=false, wantRot=true;
 var inApp=/Zalo|FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|TikTok|musical_ly|Telegram|; wv\)/i.test(navigator.userAgent);
 if(inApp&&isTouch){ var ia=document.getElementById('inapp'); ia.style.display='block'; setTimeout(function(){ ia.style.display='none'; },9000); }
 /* Xoay ngang bằng CSS: chạy được cả khi điện thoại khoá xoay màn hình */
+var curMode='thuong';
+function setSrc(mode){
+  if(mode===curMode) return; curMode=mode;
+  var t=v.currentTime||0, wasPlaying=!v.paused;
+  v.src=(mode==='xoay'?'video_xoay.mp4?v=21':'video.mp4?v=21');
+  v.addEventListener('loadedmetadata',function h(){ v.removeEventListener('loadedmetadata',h); try{ v.currentTime=t; }catch(e){} if(wasPlaying){ var p=v.play(); if(p&&p.catch)p.catch(function(){}); } });
+  v.load();
+}
+/* Điện thoại cầm dọc: phát bản video đã xoay sẵn 90° → kín màn hình, không phụ thuộc trình duyệt (Zalo, Messenger...) */
 function layout(){
   var w=window.innerWidth,h=window.innerHeight, portrait=h>w;
-  var rot=playing&&isTouch&&portrait&&wantRot, rw=document.getElementById('rw');
-  if(rot){ rw.style.inset='auto'; rw.style.left='0'; rw.style.top='0'; rw.style.width=h+'px'; rw.style.height=w+'px';
-           rw.style.transform='rotate(90deg) translateY(-100%)'; }
-  else { rw.style.inset=''; rw.style.left=''; rw.style.top=''; rw.style.width=''; rw.style.height=''; rw.style.transform=''; }
+  var mode=(isTouch&&portrait&&wantRot)?'xoay':'thuong';
+  if(playing) setSrc(mode);
   rb.style.display=(playing&&isTouch&&portrait)?'grid':'none';
 }
 document.addEventListener('fullscreenchange',function(){ setTimeout(layout,120); });
@@ -145,7 +152,10 @@ function goFull(){
 }
 function start(){
   cover.classList.add('off'); end.classList.remove('on'); spin.style.display='block';
-  playing=true; wantRot=true; layout();
+  wantRot=true;
+  var portrait=window.innerHeight>window.innerWidth;
+  if(isTouch&&portrait&&curMode!=='xoay'){ curMode='xoay'; v.src='video_xoay.mp4?v=21'; }
+  playing=true; layout();
   v.controls=true; var p=v.play(); if(p&&p.catch) p.catch(function(){ spin.style.display='none'; });
   goFull(); fs.style.display=isIOS?'none':'grid';
 }
