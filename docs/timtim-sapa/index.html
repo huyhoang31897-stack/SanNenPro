@@ -13,6 +13,10 @@
   #stage{position:fixed;inset:0;background:#000}
   #rw{position:absolute;inset:0}
   #vbg{position:absolute;inset:-6%;background:center/cover no-repeat;filter:blur(30px) brightness(.45) saturate(1.2);display:none}
+  #nextbtn{position:absolute;z-index:6;left:50%;bottom:max(64px,calc(env(safe-area-inset-bottom) + 56px));transform:translateX(-50%) scale(.9);opacity:0;pointer-events:none;transition:opacity .5s,transform .5s;padding:13px 26px;border:0;border-radius:999px;background:linear-gradient(90deg,#9a5cff,#ff5ccd);color:#fff;font:800 16px 'Be Vietnam Pro',sans-serif;letter-spacing:.06em;box-shadow:0 8px 30px rgba(160,80,255,.55);cursor:pointer;white-space:nowrap}
+  #nextbtn.on{opacity:1;pointer-events:auto;transform:translateX(-50%) scale(1)}
+  #nextbtn.rot{left:max(10px,env(safe-area-inset-left));bottom:auto;top:50%;transform:translate(-38%,-50%) rotate(90deg) scale(.9)}
+  #nextbtn.rot.on{transform:translate(-38%,-50%) rotate(90deg) scale(1)}
   video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
   .scr{position:absolute;inset:0;overflow:hidden;transition:opacity .6s ease, transform .6s ease;z-index:6}
   .scr.off{opacity:0;transform:scale(1.03);pointer-events:none}
@@ -63,6 +67,7 @@
 <body>
 <div id="stage"><div id="rw">
   <div id="vbg"></div>
+  <button id="nextbtn">NHI&#7878;M V&#7908; 02 &#9654;</button>
   <video id="v" poster="poster.jpg" preload="metadata" playsinline webkit-playsinline></video>
   <div id="spin"></div>
   <button class="fab" id="rotbtn" aria-label="Xoay"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 3h-2a3 3 0 0 0-3 3M16 21h2a3 3 0 0 0 3-3"/></svg></button>
@@ -78,7 +83,7 @@
       <div class="sub">SAPA &#183; 2026</div>
       <div class="missions">
         <button class="mcard" data-m="1"><div class="th" style="background-image:url(nv1.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 01</b><span>TH&#7916; TH&#193;CH HEART</span><em>B&#7843;n T&#7843; Van &#183; 2:03</em></div><div class="pl"></div></button>
-        <button class="mcard" data-m="2"><div class="th" style="background-image:url(nv2.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 02</b><span>TIKTOK CHALLENGE</span><em>Chinh ph&#7909;c Fansipan &#183; 0:54</em></div><div class="pl"></div></button>
+        <button class="mcard" data-m="2"><div class="th" style="background-image:url(nv2.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 02</b><span>TIKTOK CHALLENGE</span><em>Chinh ph&#7909;c Fansipan &#183; 1:18</em></div><div class="pl"></div></button>
       </div>
       <div class="hint">&#128266; Nh&#7899; b&#7853;t loa &#183; ch&#7841;m nhi&#7879;m v&#7909; &#273;&#7875; xem</div>
     </div>
@@ -114,7 +119,7 @@
   <div id="inapp">M&#7865;o: b&#7845;m <b>&#8943;</b> &#7903; g&#243;c tr&#234;n &#8594; <b>M&#7903; b&#7857;ng tr&#236;nh duy&#7879;t</b> &#273;&#7875; xem m&#432;&#7907;t nh&#7845;t</div>
 </div></div>
 <script>
-var V='?v=32', v=document.getElementById('v'), st=document.getElementById('stage'), rb=document.getElementById('rotbtn'),
+var V='?v=33', v=document.getElementById('v'), st=document.getElementById('stage'), rb=document.getElementById('rotbtn'),
     fs=document.getElementById('fs'), spin=document.getElementById('spin'), vbg=document.getElementById('vbg');
 var S={cover:document.getElementById('cover'),mid:document.getElementById('mid'),final:document.getElementById('final')};
 var isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0, isIOS=/iP(hone|od|ad)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -147,10 +152,13 @@ function onResize(){ if(mission>0){ setSrc(true); chrome(); } }
 window.addEventListener('resize',function(){ setTimeout(onResize,80); });
 window.addEventListener('orientationchange',function(){ setTimeout(onResize,250); });
 v.addEventListener('playing',function(){ spin.style.display='none'; });
+var nb=document.getElementById('nextbtn');
+v.addEventListener('timeupdate',function(){ var on=mission===1&&v.duration&&v.currentTime>v.duration-7; nb.classList.toggle('on',!!on); nb.classList.toggle('rot',curSrc.indexOf('xoay')>=0); });
+nb.onclick=function(e){ e.stopPropagation(); nb.classList.remove('on'); v.pause(); play(2); };
 v.addEventListener('waiting',function(){ spin.style.display='block'; });
 v.addEventListener('ended',function(){
-  v.controls=false; var m=mission; mission=0; chrome();
-  if(m===1){ show('mid'); var n=8, a=document.getElementById('auto'); a.textContent='Tự chuyển sau '+n+' giây';
+  nb.classList.remove('on'); v.controls=false; var m=mission; mission=0; chrome();
+  if(m===1){ show('mid'); var n=5, a=document.getElementById('auto'); a.textContent='Tự chuyển sau '+n+' giây';
     autoT=setInterval(function(){ n--; a.textContent='Tự chuyển sau '+n+' giây'; if(n<=0){ clearInterval(autoT); play(2); } },1000); }
   else show('final');
 });
