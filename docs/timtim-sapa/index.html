@@ -33,7 +33,7 @@
 
   .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(8px,1.6vh,18px);padding:0 20px}
   .eyebrow{font-size:clamp(11px,1.4vw,15px);letter-spacing:.5em;font-weight:500;color:#e4d6ff;opacity:0;animation:up .9s .2s forwards}
-  h1{font-weight:900;font-size:clamp(54px,12vw,170px);line-height:.9;letter-spacing:.01em;
+  h1{font-weight:900;font-size:clamp(54px,12vw,170px);line-height:1.18;padding:.14em .06em .02em;letter-spacing:.01em;
      background:linear-gradient(100deg,var(--p1) 10%,#fff 45%,var(--p2) 90%);background-size:200% 100%;
      -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 40px rgba(150,80,255,.45));
      opacity:0;animation:up .9s .35s forwards, shine 6s 1.3s linear infinite}
@@ -77,7 +77,7 @@
   #end{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;
      background:radial-gradient(ellipse at center,rgba(60,20,110,.85),rgba(13,6,24,.96));cursor:pointer;z-index:6}
   #end.on{display:flex;animation:up .6s}
-  #end h2{font-weight:900;font-size:clamp(34px,7vw,90px);background:linear-gradient(100deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #end h2{font-weight:900;line-height:1.25;padding:.15em .1em 0;font-size:clamp(34px,7vw,90px);background:linear-gradient(100deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
   #end p{letter-spacing:.35em;font-size:clamp(11px,1.4vw,15px);color:#e4d6ff;font-weight:700}
 </style>
 </head>
