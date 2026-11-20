@@ -53,7 +53,7 @@
   .fab{position:absolute;top:max(14px,env(safe-area-inset-top));z-index:5;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(13,6,24,.5);color:#fff;cursor:pointer;display:none;place-items:center}
   .fab svg{width:21px;height:21px}
   #fs{right:max(14px,env(safe-area-inset-right))} #rotbtn{right:max(66px,calc(env(safe-area-inset-right) + 52px))}
-  #skip{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(70px,calc(env(safe-area-inset-bottom) + 60px));z-index:5;display:none;padding:9px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(13,6,24,.55);color:#fff;font:700 13px 'Be Vietnam Pro',sans-serif;cursor:pointer}
+  
   #inapp{display:none;position:absolute;left:12px;right:12px;top:max(12px,env(safe-area-inset-top));z-index:9;padding:12px 16px;border-radius:14px;background:rgba(255,92,205,.92);color:#fff;font:600 14px/1.4 'Be Vietnam Pro',sans-serif;text-align:center}
   #final .bg{filter:none} #final .shade{background:linear-gradient(180deg,rgba(13,6,24,.1),rgba(13,6,24,.0) 60%,rgba(13,6,24,.9))}
   #final .center{justify-content:flex-end;padding-bottom:max(30px,env(safe-area-inset-bottom))}
@@ -67,7 +67,6 @@
   <div id="spin"></div>
   <button class="fab" id="rotbtn" aria-label="Xoay"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 3h-2a3 3 0 0 0-3 3M16 21h2a3 3 0 0 0 3-3"/></svg></button>
   <button class="fab" id="fs" aria-label="To&#224;n m&#224;n h&#236;nh"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-  <button id="skip">Nhi&#7879;m v&#7909; 02 &#8594;</button>
 
   <!-- màn chờ -->
   <div id="cover" class="scr">
@@ -78,8 +77,8 @@
       <h1>TIM T&#205;M</h1>
       <div class="sub">SAPA &#183; 2026</div>
       <div class="missions">
-        <button class="mcard" data-m="1"><div class="th" style="background-image:url(nv1.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 01</b><span>TH&#7916; TH&#193;CH HEART</span><em>B&#7843;n T&#7843; Van &#183; 2:12</em></div><div class="pl"></div></button>
-        <button class="mcard" data-m="2"><div class="th" style="background-image:url(nv2.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 02</b><span>TIKTOK CHALLENGE</span><em>Chinh ph&#7909;c Fansipan &#183; 0:39</em></div><div class="pl"></div></button>
+        <button class="mcard" data-m="1"><div class="th" style="background-image:url(nv1.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 01</b><span>TH&#7916; TH&#193;CH HEART</span><em>B&#7843;n T&#7843; Van &#183; 2:03</em></div><div class="pl"></div></button>
+        <button class="mcard" data-m="2"><div class="th" style="background-image:url(nv2.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 02</b><span>TIKTOK CHALLENGE</span><em>Chinh ph&#7909;c Fansipan &#183; 0:54</em></div><div class="pl"></div></button>
       </div>
       <div class="hint">&#128266; Nh&#7899; b&#7853;t loa &#183; ch&#7841;m nhi&#7879;m v&#7909; &#273;&#7875; xem</div>
     </div>
@@ -115,8 +114,8 @@
   <div id="inapp">M&#7865;o: b&#7845;m <b>&#8943;</b> &#7903; g&#243;c tr&#234;n &#8594; <b>M&#7903; b&#7857;ng tr&#236;nh duy&#7879;t</b> &#273;&#7875; xem m&#432;&#7907;t nh&#7845;t</div>
 </div></div>
 <script>
-var V='?v=30', v=document.getElementById('v'), st=document.getElementById('stage'), rb=document.getElementById('rotbtn'),
-    fs=document.getElementById('fs'), spin=document.getElementById('spin'), skip=document.getElementById('skip'), vbg=document.getElementById('vbg');
+var V='?v=31', v=document.getElementById('v'), st=document.getElementById('stage'), rb=document.getElementById('rotbtn'),
+    fs=document.getElementById('fs'), spin=document.getElementById('spin'), vbg=document.getElementById('vbg');
 var S={cover:document.getElementById('cover'),mid:document.getElementById('mid'),final:document.getElementById('final')};
 var isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0, isIOS=/iP(hone|od|ad)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 var inApp=/Zalo|FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|TikTok|musical_ly|Telegram|; wv\)/i.test(navigator.userAgent);
@@ -124,8 +123,8 @@ if(inApp&&isTouch){ var ia=document.getElementById('inapp'); ia.style.display='b
 var mission=0, wantRot=true, curSrc='', autoT=null;
 function show(name){ for(var k in S) S[k].classList.toggle('off',k!==name); }
 function portrait(){ return window.innerHeight>window.innerWidth; }
-/* Nhiệm vụ 1 là video ngang: điện thoại cầm dọc phát bản xoay sẵn. Nhiệm vụ 2 là video dọc: phát thẳng. */
-function srcFor(){ if(mission===1) return (isTouch&&portrait()&&wantRot)?'nv1_xoay.mp4':'nv1.mp4'; return 'nv2.mp4'; }
+/* Cả 2 nhiệm vụ đều là video ngang 16:9: điện thoại cầm dọc phát bản xoay sẵn. */
+function srcFor(){ var b='nv'+mission; return (isTouch&&portrait()&&wantRot)?b+'_xoay.mp4':b+'.mp4'; }
 function setSrc(keepTime){
   var s=srcFor(); if(s===curSrc) return; var t=keepTime?(v.currentTime||0):0, playing=!v.paused||!keepTime;
   curSrc=s; v.src=s+V;
@@ -134,10 +133,9 @@ function setSrc(keepTime){
 }
 function chrome(){
   var playing=mission>0;
-  rb.style.display=(playing&&mission===1&&isTouch&&portrait())?'grid':'none';
+  rb.style.display=(playing&&isTouch&&portrait())?'grid':'none';
   fs.style.display=(playing&&!isIOS)?'grid':'none';
-  skip.style.display=(mission===1)?'block':'none';
-  vbg.style.display=(mission===2&&!portrait())?'block':'none';
+  vbg.style.display='none';
 }
 function play(m){
   clearInterval(autoT); mission=m; wantRot=true; show('none'); spin.style.display='block';
@@ -145,7 +143,7 @@ function play(m){
   v.controls=true; curSrc=''; setSrc(false); chrome();
   if(!isIOS&&!(document.fullscreenElement||document.webkitFullscreenElement)){ try{ var r=st.requestFullscreen||st.webkitRequestFullscreen; if(r){ var p=r.call(st); if(p&&p.catch)p.catch(function(){}); } }catch(e){} }
 }
-function onResize(){ if(mission>0){ if(mission===1) setSrc(true); chrome(); } }
+function onResize(){ if(mission>0){ setSrc(true); chrome(); } }
 window.addEventListener('resize',function(){ setTimeout(onResize,80); });
 window.addEventListener('orientationchange',function(){ setTimeout(onResize,250); });
 v.addEventListener('playing',function(){ spin.style.display='none'; });
@@ -161,7 +159,6 @@ document.getElementById('go2').onclick=function(){ play(2); };
 document.getElementById('re1').onclick=function(){ play(1); };
 document.getElementById('fre1').onclick=function(){ play(1); };
 document.getElementById('fre2').onclick=function(){ play(2); };
-skip.onclick=function(e){ e.stopPropagation(); v.pause(); play(2); };
 rb.onclick=function(e){ e.stopPropagation(); wantRot=!wantRot; setSrc(true); };
 fs.onclick=function(e){ e.stopPropagation();
   if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
