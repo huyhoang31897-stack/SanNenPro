@@ -11,163 +11,161 @@
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{width:100%;height:100%;background:#000;overflow:hidden;color:#fff;font-family:'Be Vietnam Pro',system-ui,sans-serif}
   #stage{position:fixed;inset:0;background:#000}
-  video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
-
-  /* ---------- màn chờ ---------- */
-  #cover{position:absolute;inset:0;overflow:hidden;cursor:pointer;transition:opacity .7s ease, transform .7s ease}
-  #cover.off{opacity:0;transform:scale(1.04);pointer-events:none}
-  .bg{position:absolute;inset:-4%;background:url(cover.jpg) center 60%/cover no-repeat;animation:kb 22s ease-in-out infinite alternate;filter:saturate(1.05)}
-  @keyframes kb{from{transform:scale(1) translate(0,0)}to{transform:scale(1.12) translate(-2%,-1%)}}
-  .shade{position:absolute;inset:0;background:
-     radial-gradient(ellipse 70% 60% at 50% 48%,rgba(13,6,24,.35),rgba(13,6,24,.88) 100%),
-     linear-gradient(180deg,rgba(13,6,24,.7) 0%,rgba(13,6,24,.15) 35%,rgba(13,6,24,.25) 60%,rgba(13,6,24,.95) 100%)}
-  .grain{position:absolute;inset:-50%;opacity:.07;pointer-events:none;animation:gr 1s steps(4) infinite;
-     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
-  @keyframes gr{0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-1%)}}
-
-  .top{position:absolute;left:0;right:0;top:max(22px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;
-     padding:0 max(24px,env(safe-area-inset-right)) 0 max(24px,env(safe-area-inset-left));font-size:clamp(10px,1.2vw,13px);letter-spacing:.3em;font-weight:700;color:#e4d6ff}
-  .live{display:flex;align-items:center;gap:8px;letter-spacing:.2em}
-  .live i{width:8px;height:8px;border-radius:50%;background:var(--p2);box-shadow:0 0 12px var(--p2);animation:blink 1.6s infinite}
-  @keyframes blink{50%{opacity:.25}}
-
-  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(8px,1.6vh,18px);padding:0 20px}
-  .eyebrow{font-size:clamp(11px,1.4vw,15px);letter-spacing:.5em;font-weight:500;color:#e4d6ff;opacity:0;animation:up .9s .2s forwards}
-  h1{font-weight:900;font-size:clamp(54px,12vw,170px);line-height:1.18;padding:.14em .06em .02em;letter-spacing:.01em;
-     background:linear-gradient(100deg,var(--p1) 10%,#fff 45%,var(--p2) 90%);background-size:200% 100%;
-     -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 40px rgba(150,80,255,.45));
-     opacity:0;animation:up .9s .35s forwards, shine 6s 1.3s linear infinite}
+  #rw{position:absolute;inset:0}
+  #vbg{position:absolute;inset:-6%;background:center/cover no-repeat;filter:blur(30px) brightness(.45) saturate(1.2);display:none}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
+  .scr{position:absolute;inset:0;overflow:hidden;transition:opacity .6s ease, transform .6s ease;z-index:6}
+  .scr.off{opacity:0;transform:scale(1.03);pointer-events:none}
+  .bg{position:absolute;inset:-4%;background:center 60%/cover no-repeat;animation:kb 22s ease-in-out infinite alternate}
+  @keyframes kb{from{transform:scale(1)}to{transform:scale(1.12) translate(-2%,-1%)}}
+  .shade{position:absolute;inset:0;background:radial-gradient(ellipse 75% 65% at 50% 50%,rgba(13,6,24,.45),rgba(13,6,24,.92)),linear-gradient(180deg,rgba(13,6,24,.65),rgba(13,6,24,.2) 40%,rgba(13,6,24,.95))}
+  .top{position:absolute;left:0;right:0;top:max(18px,env(safe-area-inset-top));display:flex;justify-content:space-between;padding:0 22px;font-size:clamp(10px,1.2vw,13px);letter-spacing:.3em;font-weight:700;color:#e4d6ff}
+  .live{display:flex;align-items:center;gap:8px}.live i{width:8px;height:8px;border-radius:50%;background:var(--p2);box-shadow:0 0 12px var(--p2);animation:bl 1.6s infinite}
+  @keyframes bl{50%{opacity:.25}}
+  .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(8px,1.5vh,16px);padding:60px 16px}
+  .eyebrow{font-size:clamp(11px,1.4vw,15px);letter-spacing:.5em;color:#e4d6ff;opacity:0;animation:up .9s .2s forwards}
+  h1{font-weight:900;font-size:clamp(50px,11vw,150px);line-height:1.18;padding:.14em .06em .02em;background:linear-gradient(100deg,var(--p1) 10%,#fff 45%,var(--p2) 90%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 40px rgba(150,80,255,.45));opacity:0;animation:up .9s .35s forwards,shine 6s 1.3s linear infinite}
   @keyframes shine{to{background-position:-200% 0}}
-  .sub{font-size:clamp(14px,2.2vw,26px);font-weight:700;letter-spacing:.6em;padding-left:.6em;opacity:0;animation:up .9s .5s forwards}
-  .tag{font-size:clamp(13px,1.6vw,18px);color:#efe6ff;opacity:0;animation:up .9s .65s forwards;font-weight:500}
+  .sub{font-size:clamp(13px,2vw,22px);font-weight:700;letter-spacing:.55em;padding-left:.55em;opacity:0;animation:up .9s .5s forwards}
   @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-
-  .play{margin-top:clamp(10px,2.5vh,28px);display:flex;align-items:center;gap:16px;padding:10px 26px 10px 10px;border-radius:999px;
-     background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-     box-shadow:0 10px 40px rgba(0,0,0,.35);opacity:0;animation:up .9s .85s forwards;transition:transform .2s, background .2s}
-  #cover:hover .play{background:rgba(255,255,255,.2);transform:translateY(-2px)}
-  .disc{position:relative;width:clamp(58px,6.5vw,76px);height:clamp(58px,6.5vw,76px);border-radius:50%;
-     background:linear-gradient(135deg,#9650ff,var(--p2));display:grid;place-items:center;box-shadow:0 0 30px rgba(255,92,205,.55)}
-  .disc:before{content:"";position:absolute;inset:-7px;border-radius:50%;border:2px solid rgba(255,92,205,.6);animation:ring 2.2s ease-out infinite}
-  @keyframes ring{from{transform:scale(.9);opacity:1}to{transform:scale(1.35);opacity:0}}
-  .disc svg{width:38%;height:38%;margin-left:8%}
-  .pl{text-align:left;line-height:1.25}
-  .pl b{display:block;font-size:clamp(15px,1.7vw,19px);letter-spacing:.12em}
-  .pl span{font-size:clamp(12px,1.2vw,14px);color:#e4d6ff}
-
-  .bottom{position:absolute;left:0;right:0;bottom:max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 16px}
-  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-  .chips em{font-style:normal;font-size:clamp(10px,1.1vw,12px);font-weight:700;letter-spacing:.14em;padding:6px 12px;border-radius:999px;
-     background:rgba(13,6,24,.55);border:1px solid rgba(201,168,255,.35);color:#e4d6ff}
-  .hint{font-size:12px;color:#cdbdf0;opacity:.9}
-  .rot{display:none}
-  @media (orientation:portrait) and (max-width:700px){.rot{display:inline}}
-
-  /* loading + end */
-  #spin{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;border:3px solid rgba(255,255,255,.15);
-     border-top-color:var(--p2);animation:sp .8s linear infinite;display:none;z-index:4}
+  .missions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:clamp(8px,2vh,22px);opacity:0;animation:up .9s .7s forwards}
+  .mcard{position:relative;width:min(300px,42vw);border-radius:18px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);text-align:left;transition:transform .2s,border-color .2s;color:#fff;font-family:inherit;padding:0}
+  .mcard:hover{transform:translateY(-3px);border-color:rgba(255,92,205,.8)}
+  .mcard .th{height:clamp(70px,13vh,130px);background:center/cover no-repeat}
+  .mcard .tx{padding:10px 14px 12px}
+  .mcard b{display:block;font-size:clamp(10px,1.1vw,12px);letter-spacing:.25em;color:#e4d6ff}
+  .mcard span{display:block;font-size:clamp(14px,1.8vw,19px);font-weight:900;margin-top:2px}
+  .mcard em{font-style:normal;font-size:clamp(11px,1.2vw,13px);color:#d8c9f5}
+  .mcard .pl{position:absolute;right:12px;top:calc(clamp(70px,13vh,130px) - 24px);width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#9650ff,var(--p2));display:grid;place-items:center;box-shadow:0 0 22px rgba(255,92,205,.6)}
+  .mcard .pl:after{content:"";border-left:15px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px}
+  .hint{font-size:12px;color:#cdbdf0;margin-top:6px}
+  .bigbtn{display:inline-flex;align-items:center;gap:14px;padding:12px 26px 12px 12px;border-radius:999px;border:0;cursor:pointer;color:#fff;font-family:inherit;background:linear-gradient(135deg,#9650ff,var(--p2));box-shadow:0 10px 40px rgba(255,92,205,.45);font-weight:900;font-size:clamp(15px,2vw,20px);letter-spacing:.04em;animation:pulse 2.2s infinite}
+  .bigbtn i{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center}
+  .bigbtn i:after{content:"";border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,92,205,.55)}60%{box-shadow:0 0 0 18px rgba(255,92,205,0)}}
+  .ghost{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:999px;color:#fff;padding:10px 20px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .done{font-size:clamp(11px,1.4vw,14px);letter-spacing:.4em;color:#9dffb8;font-weight:700}
+  .done:before{content:"✓ ";letter-spacing:0}
+  h2{font-weight:900;font-size:clamp(30px,6vw,72px);line-height:1.2;padding:.12em .05em 0;background:linear-gradient(100deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center}
+  #spin{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--p2);animation:sp .8s linear infinite;display:none;z-index:4}
   @keyframes sp{to{transform:rotate(360deg)}}
-  #fs{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:5;
-     width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(13,6,24,.5);backdrop-filter:blur(8px);
-     color:#fff;cursor:pointer;display:none;place-items:center}
-  #fs svg{width:20px;height:20px}
-  #rotbtn{position:absolute;right:max(66px,calc(env(safe-area-inset-right) + 52px));top:max(14px,env(safe-area-inset-top));z-index:5;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(13,6,24,.5);color:#fff;cursor:pointer;display:none;place-items:center}
-  #rotbtn svg{width:22px;height:22px}
-  #rw{position:absolute;inset:0;transform-origin:top left}
-  #end{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;
-     background:radial-gradient(ellipse at center,rgba(60,20,110,.85),rgba(13,6,24,.96));cursor:pointer;z-index:6}
-  #end.on{display:flex;animation:up .6s}
-  #end h2{font-weight:900;line-height:1.25;padding:.15em .1em 0;font-size:clamp(34px,7vw,90px);background:linear-gradient(100deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent}
-  #end p{letter-spacing:.35em;font-size:clamp(11px,1.4vw,15px);color:#e4d6ff;font-weight:700}
+  .fab{position:absolute;top:max(14px,env(safe-area-inset-top));z-index:5;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(13,6,24,.5);color:#fff;cursor:pointer;display:none;place-items:center}
+  .fab svg{width:21px;height:21px}
+  #fs{right:max(14px,env(safe-area-inset-right))} #rotbtn{right:max(66px,calc(env(safe-area-inset-right) + 52px))}
+  #skip{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(70px,calc(env(safe-area-inset-bottom) + 60px));z-index:5;display:none;padding:9px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(13,6,24,.55);color:#fff;font:700 13px 'Be Vietnam Pro',sans-serif;cursor:pointer}
+  #inapp{display:none;position:absolute;left:12px;right:12px;top:max(12px,env(safe-area-inset-top));z-index:9;padding:12px 16px;border-radius:14px;background:rgba(255,92,205,.92);color:#fff;font:600 14px/1.4 'Be Vietnam Pro',sans-serif;text-align:center}
+  #final .bg{filter:none} #final .shade{background:linear-gradient(180deg,rgba(13,6,24,.1),rgba(13,6,24,.0) 60%,rgba(13,6,24,.9))}
+  #final .center{justify-content:flex-end;padding-bottom:max(30px,env(safe-area-inset-bottom))}
+  @media (max-width:560px){.mcard{width:min(320px,86vw);display:flex}.mcard .th{width:38%;height:auto;min-height:92px}.mcard .pl{top:auto;bottom:10px;right:10px;width:38px;height:38px}}
 </style>
 </head>
 <body>
 <div id="stage"><div id="rw">
-  <video id="v" src="video.mp4?v=23" poster="poster.jpg" preload="auto" playsinline webkit-playsinline></video>
+  <div id="vbg"></div>
+  <video id="v" poster="poster.jpg" preload="metadata" playsinline webkit-playsinline></video>
   <div id="spin"></div>
-  <button id="rotbtn" aria-label="Xoay"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 3h-2a3 3 0 0 0-3 3M16 21h2a3 3 0 0 0 3-3"/></svg></button>
-  <button id="fs" aria-label="To&#224;n m&#224;n h&#236;nh"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  <button class="fab" id="rotbtn" aria-label="Xoay"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 3h-2a3 3 0 0 0-3 3M16 21h2a3 3 0 0 0 3-3"/></svg></button>
+  <button class="fab" id="fs" aria-label="To&#224;n m&#224;n h&#236;nh"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  <button id="skip">Nhi&#7879;m v&#7909; 02 &#8594;</button>
 
-  <div id="cover">
-    <div class="bg"></div><div class="shade"></div><div class="grain"></div>
+  <!-- màn chờ -->
+  <div id="cover" class="scr">
+    <div class="bg" style="background-image:url(cover.jpg)"></div><div class="shade"></div>
     <div class="top"><span>COTECCONS</span><span class="live"><i></i>TEAM BUILDING 2026</span></div>
     <div class="center">
       <div class="eyebrow">H&#192;NH TR&#204;NH</div>
       <h1>TIM T&#205;M</h1>
       <div class="sub">SAPA &#183; 2026</div>
-      <div class="tag">M&#432;a Sapa kh&#244;ng c&#7843;n &#273;&#432;&#7907;c Tim T&#237;m</div>
-      <div class="play">
-        <div class="disc"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z" fill="#fff"/></svg></div>
-        <div class="pl"><b>XEM VIDEO</b><span>2:23 &#183; nh&#7899; b&#7853;t loa &#128266;</span></div>
+      <div class="missions">
+        <button class="mcard" data-m="1"><div class="th" style="background-image:url(nv1.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 01</b><span>TH&#7916; TH&#193;CH HEART</span><em>B&#7843;n T&#7843; Van &#183; 2:12</em></div><div class="pl"></div></button>
+        <button class="mcard" data-m="2"><div class="th" style="background-image:url(nv2.jpg)"></div><div class="tx"><b>NHI&#7878;M V&#7908; 02</b><span>TIKTOK CHALLENGE</span><em>Chinh ph&#7909;c Fansipan &#183; 0:39</em></div><div class="pl"></div></button>
       </div>
-    </div>
-    <div class="bottom">
-      <div class="chips"><em>R</em><em>A</em><em>H</em><em>BINGO</em><em>T&#7840;O D&#193;NG</em></div>
-      <div class="hint rot">Video t&#7921; xoay ngang khi b&#7845;m xem &#183; c&#7847;m &#273;i&#7879;n tho&#7841;i n&#7857;m ngang nh&#233;</div>
+      <div class="hint">&#128266; Nh&#7899; b&#7853;t loa &#183; ch&#7841;m nhi&#7879;m v&#7909; &#273;&#7875; xem</div>
     </div>
   </div>
 
-  <div id="inapp" style="display:none;position:absolute;left:12px;right:12px;top:max(12px,env(safe-area-inset-top));z-index:9;padding:12px 16px;border-radius:14px;background:rgba(255,92,205,.92);color:#fff;font:600 14px/1.4 'Be Vietnam Pro',sans-serif;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4)">M&#7865;o: b&#7845;m <b>&#8943;</b> &#7903; g&#243;c tr&#234;n &#8594; <b>M&#7903; b&#7857;ng tr&#236;nh duy&#7879;t</b> &#273;&#7875; xem ngang to&#224;n m&#224;n h&#236;nh m&#432;&#7907;t nh&#7845;t</div>
-  <div id="end">
-    <h2>TIM T&#205;M &#272;O&#192;N K&#7870;T</h2>
-    <p>TEAM BUILDING &#183; COTECCONS 2026</p>
-    <div class="play" style="opacity:1;animation:none">
-      <div class="disc"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 11-6 6H4a8 8 0 108-8z" fill="#fff"/></svg></div>
-      <div class="pl"><b>XEM L&#7840;I</b><span>Replay</span></div>
+  <!-- hết nhiệm vụ 1: nút chuyển -->
+  <div id="mid" class="scr off">
+    <div class="bg" style="background-image:url(nv2.jpg);filter:blur(16px) brightness(.8)"></div><div class="shade"></div>
+    <div class="center">
+      <div class="done">HO&#192;N TH&#192;NH NHI&#7878;M V&#7908; 01</div>
+      <h2>Ti&#7871;p theo&hellip;</h2>
+      <div class="eyebrow" style="animation:none;opacity:1">NHI&#7878;M V&#7908; 02 &#183; TIKTOK CHALLENGE &#183; FANSIPAN 3.143M</div>
+      <div class="row" style="margin-top:10px">
+        <button class="bigbtn" id="go2"><i></i>XEM NHI&#7878;M V&#7908; 02</button>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="ghost" id="re1">&#8634; Xem l&#7841;i nhi&#7879;m v&#7909; 01</button></div>
+      <div class="hint" id="auto"></div>
     </div>
   </div>
+
+  <!-- kết -->
+  <div id="final" class="scr off">
+    <div class="bg" style="background:#0d0618 url(final.jpg) center 35%/contain no-repeat;animation:none;inset:0"></div><div class="shade"></div>
+    <div class="center">
+      <div class="done">HO&#192;N TH&#192;NH 2 NHI&#7878;M V&#7908;</div>
+      <div class="row" style="margin-top:8px">
+        <button class="ghost" id="fre1">&#8634; Nhi&#7879;m v&#7909; 01</button>
+        <button class="ghost" id="fre2">&#8634; Nhi&#7879;m v&#7909; 02</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="inapp">M&#7865;o: b&#7845;m <b>&#8943;</b> &#7903; g&#243;c tr&#234;n &#8594; <b>M&#7903; b&#7857;ng tr&#236;nh duy&#7879;t</b> &#273;&#7875; xem m&#432;&#7907;t nh&#7845;t</div>
 </div></div>
 <script>
-var v=document.getElementById('v'),st=document.getElementById('stage'),cover=document.getElementById('cover'),
-    fs=document.getElementById('fs'),rb=document.getElementById('rotbtn'),end=document.getElementById('end'),spin=document.getElementById('spin');
+var V='?v=30', v=document.getElementById('v'), st=document.getElementById('stage'), rb=document.getElementById('rotbtn'),
+    fs=document.getElementById('fs'), spin=document.getElementById('spin'), skip=document.getElementById('skip'), vbg=document.getElementById('vbg');
+var S={cover:document.getElementById('cover'),mid:document.getElementById('mid'),final:document.getElementById('final')};
 var isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0, isIOS=/iP(hone|od|ad)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-var playing=false, wantRot=true;
 var inApp=/Zalo|FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|TikTok|musical_ly|Telegram|; wv\)/i.test(navigator.userAgent);
-if(inApp&&isTouch){ var ia=document.getElementById('inapp'); ia.style.display='block'; setTimeout(function(){ ia.style.display='none'; },9000); }
-/* Xoay ngang bằng CSS: chạy được cả khi điện thoại khoá xoay màn hình */
-var curMode='thuong';
-function setSrc(mode){
-  if(mode===curMode) return; curMode=mode;
-  var t=v.currentTime||0, wasPlaying=!v.paused;
-  v.src=(mode==='xoay'?'video_xoay.mp4?v=23':'video.mp4?v=23');
-  v.addEventListener('loadedmetadata',function h(){ v.removeEventListener('loadedmetadata',h); try{ v.currentTime=t; }catch(e){} if(wasPlaying){ var p=v.play(); if(p&&p.catch)p.catch(function(){}); } });
+if(inApp&&isTouch){ var ia=document.getElementById('inapp'); ia.style.display='block'; setTimeout(function(){ ia.style.display='none'; },8000); }
+var mission=0, wantRot=true, curSrc='', autoT=null;
+function show(name){ for(var k in S) S[k].classList.toggle('off',k!==name); }
+function portrait(){ return window.innerHeight>window.innerWidth; }
+/* Nhiệm vụ 1 là video ngang: điện thoại cầm dọc phát bản xoay sẵn. Nhiệm vụ 2 là video dọc: phát thẳng. */
+function srcFor(){ if(mission===1) return (isTouch&&portrait()&&wantRot)?'nv1_xoay.mp4':'nv1.mp4'; return 'nv2.mp4'; }
+function setSrc(keepTime){
+  var s=srcFor(); if(s===curSrc) return; var t=keepTime?(v.currentTime||0):0, playing=!v.paused||!keepTime;
+  curSrc=s; v.src=s+V;
+  v.addEventListener('loadedmetadata',function h(){ v.removeEventListener('loadedmetadata',h); try{ if(t) v.currentTime=t; }catch(e){} if(playing){ var p=v.play(); if(p&&p.catch)p.catch(function(){ spin.style.display='none'; }); } });
   v.load();
 }
-/* Điện thoại cầm dọc: phát bản video đã xoay sẵn 90° → kín màn hình, không phụ thuộc trình duyệt (Zalo, Messenger...) */
-function layout(){
-  var w=window.innerWidth,h=window.innerHeight, portrait=h>w;
-  var mode=(isTouch&&portrait&&wantRot)?'xoay':'thuong';
-  if(playing) setSrc(mode);
-  rb.style.display=(playing&&isTouch&&portrait)?'grid':'none';
+function chrome(){
+  var playing=mission>0;
+  rb.style.display=(playing&&mission===1&&isTouch&&portrait())?'grid':'none';
+  fs.style.display=(playing&&!isIOS)?'grid':'none';
+  skip.style.display=(mission===1)?'block':'none';
+  vbg.style.display=(mission===2&&!portrait())?'block':'none';
 }
-document.addEventListener('fullscreenchange',function(){ setTimeout(layout,120); });
-document.addEventListener('webkitfullscreenchange',function(){ setTimeout(layout,120); });
-window.addEventListener('resize',function(){ setTimeout(layout,60); });
-window.addEventListener('orientationchange',function(){ setTimeout(layout,250); });
-function goFull(){
-  if(isIOS) return;                                  /* iPhone: dùng xoay CSS, không bật trình phát riêng */
-  try{ var r=st.requestFullscreen||st.webkitRequestFullscreen;
-    if(r){ var p=r.call(st); if(p&&p.then) p.then(function(){ try{ screen.orientation.lock('landscape').then(layout).catch(function(){}); }catch(e){} }).catch(function(){}); }
-  }catch(e){}
+function play(m){
+  clearInterval(autoT); mission=m; wantRot=true; show('none'); spin.style.display='block';
+  vbg.style.backgroundImage='url('+(m===2?'nv2.jpg':'nv1.jpg')+')';
+  v.controls=true; curSrc=''; setSrc(false); chrome();
+  if(!isIOS&&!(document.fullscreenElement||document.webkitFullscreenElement)){ try{ var r=st.requestFullscreen||st.webkitRequestFullscreen; if(r){ var p=r.call(st); if(p&&p.catch)p.catch(function(){}); } }catch(e){} }
 }
-function start(){
-  cover.classList.add('off'); end.classList.remove('on'); spin.style.display='block';
-  wantRot=true;
-  var portrait=window.innerHeight>window.innerWidth;
-  if(isTouch&&portrait&&curMode!=='xoay'){ curMode='xoay'; v.src='video_xoay.mp4?v=23'; }
-  playing=true; layout();
-  v.controls=true; var p=v.play(); if(p&&p.catch) p.catch(function(){ spin.style.display='none'; });
-  goFull(); fs.style.display=isIOS?'none':'grid';
-}
+function onResize(){ if(mission>0){ if(mission===1) setSrc(true); chrome(); } }
+window.addEventListener('resize',function(){ setTimeout(onResize,80); });
+window.addEventListener('orientationchange',function(){ setTimeout(onResize,250); });
 v.addEventListener('playing',function(){ spin.style.display='none'; });
 v.addEventListener('waiting',function(){ spin.style.display='block'; });
-cover.onclick=start;
-end.onclick=function(){ v.currentTime=0; start(); };
-rb.onclick=function(e){ e.stopPropagation(); wantRot=!wantRot; layout(); };
+v.addEventListener('ended',function(){
+  v.controls=false; var m=mission; mission=0; chrome();
+  if(m===1){ show('mid'); var n=8, a=document.getElementById('auto'); a.textContent='Tự chuyển sau '+n+' giây';
+    autoT=setInterval(function(){ n--; a.textContent='Tự chuyển sau '+n+' giây'; if(n<=0){ clearInterval(autoT); play(2); } },1000); }
+  else show('final');
+});
+document.querySelectorAll('.mcard').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); play(+b.dataset.m); }; });
+document.getElementById('go2').onclick=function(){ play(2); };
+document.getElementById('re1').onclick=function(){ play(1); };
+document.getElementById('fre1').onclick=function(){ play(1); };
+document.getElementById('fre2').onclick=function(){ play(2); };
+skip.onclick=function(e){ e.stopPropagation(); v.pause(); play(2); };
+rb.onclick=function(e){ e.stopPropagation(); wantRot=!wantRot; setSrc(true); };
 fs.onclick=function(e){ e.stopPropagation();
   if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
-  else goFull(); };
-v.onended=function(){ v.controls=false; end.classList.add('on'); };
+  else { var r=st.requestFullscreen||st.webkitRequestFullscreen; if(r) r.call(st); } };
 </script>
 </body>
 </html>
