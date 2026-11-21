@@ -4,6 +4,18 @@ Tài liệu này dành cho trợ lý AI (Claude, ChatGPT, Copilot...) hoặc scr
 
 Người dùng chính của tool là AI: người dùng mô tả việc cần làm bằng lời, AI chạy lệnh và báo kết quả. Giao diện chỉ dùng khi cần thao tác tay.
 
+## Tài liệu cho AI
+
+Đọc theo thứ tự trước khi **sửa code**:
+
+1. `AGENTS.md` (file này): cách chạy và quy tắc.
+2. `CODEMAP.md`: muốn sửa gì thì sửa ở hàm nào.
+3. `PROGRESS.md`: đang làm tới đâu, việc tiếp theo.
+4. `TRAPS.md`: lỗi đã gặp, không lặp lại.
+5. `docs/adr/`: vì sao chọn cách làm hiện tại.
+
+Sau khi sửa code: chạy `python test_sannen.py`, phải được `TONG: n / n`. Cập nhật `PROGRESS.md`. Gặp lỗi mới mất hơn 15 phút thì ghi vào `TRAPS.md`. Đổi cách làm lớn, kể cả đổi tên khoá JSON, thì viết ADR mới. Đổi logic `scan_entities` thì tăng `SCAN_VER`.
+
 ## Việc AI được làm và không được làm
 
 - Không sửa file bản vẽ đầu vào. Chương trình chỉ đọc, kết quả ghi vào thư mục `--out`.
